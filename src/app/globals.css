@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── CHRONOS Design Tokens ── */
+  --color-gold: #B8956A;
+  --color-gold-light: #CBAB82;
+  --color-gold-dark: #9A7B55;
+  --color-gold-muted: rgba(184, 149, 106, 0.12);
+
+  --color-navy: #1A1A1A;
+  --color-navy-light: #2A2A2A;
+  --color-charcoal: #222222;
+
+  --color-text: #333333;
+  --color-text-secondary: #777777;
+  --color-text-light: #999999;
+
+  --color-border: #E8E8E8;
+  --color-border-light: #F0F0F0;
+
+  --color-bg: #FFFFFF;
+  --color-bg-off: #FAFAFA;
+  --color-bg-warm: #F7F5F2;
+
+  --color-green: #2D6A4F;
+  --color-red: #B91C1C;
+  --color-purple: #7B2D8B;
+  --color-blue: #2563EB;
+  --color-orange: #9A3412;
+  --color-teal: #0F766E;
+
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-body: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ── Base Styles ── */
+::selection {
+  background-color: var(--color-gold-muted);
+  color: var(--color-charcoal);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-gold);
+  border-radius: 3px;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Animations ── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes progress-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+
+.animate-marquee {
+  animation: marquee 35s linear infinite;
+}
+
+/* ── Stagger delays ── */
+.stagger-1 { animation-delay: 0.06s; opacity: 0; }
+.stagger-2 { animation-delay: 0.12s; opacity: 0; }
+.stagger-3 { animation-delay: 0.18s; opacity: 0; }
+.stagger-4 { animation-delay: 0.24s; opacity: 0; }
+.stagger-5 { animation-delay: 0.30s; opacity: 0; }
+.stagger-6 { animation-delay: 0.36s; opacity: 0; }
+
+/* ── Article prose styles ── */
+.article-body p {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  line-height: 1.85;
+  color: var(--color-text);
+  margin-bottom: 1.5rem;
+}
+
+.article-body h2 {
+  font-family: var(--font-display);
+  font-size: 1.875rem;
+  font-weight: 500;
+  color: var(--color-charcoal);
+  margin: 3rem 0 1.25rem;
+  padding-top: 1.25rem;
+}
+
+.article-body h3 {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 500;
+  color: var(--color-charcoal);
+  margin: 2rem 0 1rem;
+}
+
+.article-body blockquote {
+  margin: 2.5rem 0;
+  padding: 1.5rem 0 1.5rem 1.75rem;
+  border-left: 3px solid var(--color-gold);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--color-charcoal);
+  line-height: 1.5;
+}
+
+.article-body img {
+  width: 100%;
+  margin: 2rem 0;
+}
+
+.article-body figcaption {
+  font-size: 0.75rem;
+  color: var(--color-text-light);
+  text-align: center;
+  margin-top: -1rem;
+  margin-bottom: 2rem;
+  font-style: italic;
+}
+
+/* ── Drop cap ── */
+.drop-cap::first-letter {
+  font-family: var(--font-display);
+  font-size: 3.75rem;
+  font-weight: 500;
+  float: left;
+  line-height: 0.8;
+  margin-right: 0.625rem;
+  margin-top: 0.25rem;
+  color: var(--color-charcoal);
+}
