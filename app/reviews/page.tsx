@@ -1,15 +1,22 @@
+import { client, urlFor } from "@/sanity/client";
+import { reviewsIndexQuery } from "@/sanity/queries";
 import Link from "next/link";
 
-const REVIEWS = [
-  { id: "1", title: "Rolex Submariner 126610LN", brand: "Rolex", rating: 9.2, price: "$10,250", img: "https://images.unsplash.com/photo-1508057198894-247b23fe5ade?w=600&q=80", slug: "rolex-submariner" },
-  { id: "2", title: "Tudor Black Bay 58", brand: "Tudor", rating: 8.8, price: "$3,975", img: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=600&q=80", slug: "tudor-bb58" },
-  { id: "3", title: "Omega Seamaster 300M", brand: "Omega", rating: 9.0, price: "$5,300", img: "https://images.unsplash.com/photo-1547996160-81dfa63595aa?w=600&q=80", slug: "omega-seamaster" },
-  { id: "4", title: "Grand Seiko SBGA413", brand: "Grand Seiko", rating: 9.3, price: "$5,800", img: "https://images.unsplash.com/photo-1614164185128-e4ec99c436d7?w=600&q=80", slug: "grand-seiko-sbga413" },
-  { id: "5", title: "Cartier Santos Medium", brand: "Cartier", rating: 8.9, price: "$7,250", img: "https://images.unsplash.com/photo-1622434641406-a158123450f9?w=600&q=80", slug: "cartier-santos" },
-  { id: "6", title: "IWC Portugieser Chronograph", brand: "IWC", rating: 8.7, price: "$8,100", img: "https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?w=600&q=80", slug: "iwc-portugieser" },
-];
+export const revalidate = 60;
 
-export default function ReviewsIndex() {
+export const metadata = {
+  title: "Watch Reviews",
+  description: "Hands-on reviews with detailed specs, ratings, and honest verdicts",
+};
+
+function formatImage(img: any) {
+  if (!img?.asset) return "https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=600&q=80";
+  return urlFor(img).width(600).quality(80).url();
+}
+
+export default async function ReviewsPage() {
+  const reviews = await client.fetch(reviewsIndexQuery) || [];
+
   return (
     <div>
       <section className="pt-14 bg-[var(--navy)]">
@@ -23,24 +30,32 @@ export default function ReviewsIndex() {
 
       <section className="py-12 bg-[var(--bg)]">
         <div className="max-w-[1200px] mx-auto px-6 md:px-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
-            {REVIEWS.map((r) => (
-              <Link key={r.id} href={`/reviews/${r.slug}`} className="no-underline group">
-                <div className="overflow-hidden mb-3.5 bg-[var(--bg-off)]" style={{ aspectRatio: "4/3" }}>
-                  <img src={r.img} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                </div>
-                <div className="text-[11px] font-medium text-[var(--gold)] tracking-[1px] uppercase mb-1">{r.brand}</div>
-                <h3 className="text-[19px] font-medium text-[var(--charcoal)] leading-tight mb-2 group-hover:text-[var(--gold-dark)] transition-colors" style={{ fontFamily: "var(--font-display)" }}>{r.title}</h3>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[22px] font-light text-[var(--gold)]" style={{ fontFamily: "var(--font-display)" }}>{r.rating}</span>
-                    <span className="text-[12px] text-[var(--text-light)]">/10</span>
+          {reviews.length === 0 ? (
+            <p className="text-center text-[var(--text-light)] py-20">No reviews yet. Add reviews in the CMS.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+              {reviews.map((r: any) => (
+                <Link key={r._id} href={`/reviews/${r.slug?.current}`} className="no-underline group">
+                  <div className="overflow-hidden mb-3.5 bg-[var(--bg-off)]" style={{ aspectRatio: "4/3" }}>
+                    <img src={formatImage(r.gallery?.[0])} alt={r.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   </div>
-                  <span className="text-[14px] font-semibold text-[var(--charcoal)]">{r.price}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
+                  <div className="text-[11px] font-medium text-[var(--gold)] tracking-[1px] uppercase mb-1">{r.brand?.name}</div>
+                  <h3 className="text-[19px] font-medium text-[var(--charcoal)] leading-tight mb-2 group-hover:text-[var(--gold-dark)] transition-colors" style={{ fontFamily: "var(--font-display)" }}>{r.title}</h3>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[22px] font-light text-[var(--gold)]" style={{ fontFamily: "var(--font-display)" }}>{r.rating}</span>
+                      <span className="text-[12px] text-[var(--text-light)]">/10</span>
+                    </div>
+                    {r.priceRange && (
+                      <span className="text-[14px] font-semibold text-[var(--charcoal)]">
+                        ${r.priceRange.min?.toLocaleString()}+
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </div>
