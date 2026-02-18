@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 
 const NAV = [
   { label: "Latest", href: "/blog" },
@@ -12,6 +13,8 @@ const NAV = [
 ];
 
 export function Header() {
+  const pathname = usePathname();
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -21,7 +24,7 @@ export function Header() {
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
-  const isHome = typeof window !== "undefined" && window.location.pathname === "/";
+  const isHome = pathname === "/";
   const bg = scrolled || !isHome
     ? "bg-white/[0.98] border-b border-[var(--border)]"
     : "bg-[rgba(26,26,26,0.4)] border-b border-white/[0.08]";
@@ -56,7 +59,7 @@ export function Header() {
 
         {/* Search + Mobile Menu */}
         <div className="flex items-center gap-3">
-          <button className={`p-1 bg-transparent border-none cursor-pointer transition-colors hover:text-[var(--gold)] ${textColor}`}>
+          <button onClick={() => router.push("/search")} className={`p-1 bg-transparent border-none cursor-pointer transition-colors hover:text-[var(--gold)] ${textColor}`}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>

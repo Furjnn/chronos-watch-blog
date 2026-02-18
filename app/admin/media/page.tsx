@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import MediaClient from "@/components/admin/MediaClient";
 import { readdir, stat } from "fs/promises";
 import path from "path";

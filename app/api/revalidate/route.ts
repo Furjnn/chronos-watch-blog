@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       slug: slug?.current,
       now: Date.now(),
     });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ message: "Error revalidating" }, { status: 500 });
   }
 }

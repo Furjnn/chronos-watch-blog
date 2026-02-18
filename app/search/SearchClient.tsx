@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Result {
   id: string; type: string; title: string; excerpt: string;
@@ -51,8 +52,8 @@ export default function SearchClient({ initialResults, initialQuery }: { initial
             <Link key={r.id} href={r.slug} className="flex gap-5 py-6 no-underline"
               style={{ borderBottom: idx < initialResults.length - 1 ? "1px solid var(--border)" : "none" }}
               onMouseEnter={() => setHoveredId(r.id)} onMouseLeave={() => setHoveredId(null)}>
-              <div className="w-[120px] h-[90px] min-w-[120px] overflow-hidden bg-[var(--bg-off)]">
-                <img src={r.img} alt="" className="w-full h-full object-cover transition-transform duration-500" style={{ transform: hoveredId === r.id ? "scale(1.06)" : "scale(1)" }} />
+              <div className="relative w-[120px] h-[90px] min-w-[120px] overflow-hidden bg-[var(--bg-off)]">
+                <Image src={r.img} alt={r.title} fill sizes="120px" className="object-cover transition-transform duration-500" style={{ transform: hoveredId === r.id ? "scale(1.06)" : "scale(1)" }} />
               </div>
               <div className="flex-1">
                 <div className="mb-1.5">

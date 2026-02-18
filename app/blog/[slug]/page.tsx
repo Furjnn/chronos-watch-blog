@@ -3,19 +3,38 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import BlogPostClient from "./BlogPostClient";
 import { renderTiptapContent } from "@/lib/tiptap-renderer";
+import type { Metadata } from "next";
+import Image from "next/image";
+import type { JSONContent } from "@tiptap/core";
 
 export const revalidate = 3600;
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export async function generateStaticParams() {
   const posts = await prisma.post.findMany({ where: { status: "PUBLISHED" }, select: { slug: true } });
   return posts.map(p => ({ slug: p.slug }));
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const post = await prisma.post.findUnique({ where: { slug }, select: { title: true, excerpt: true, seoTitle: true, seoDesc: true } });
+  const post = await prisma.post.findUnique({
+    where: { slug },
+    select: { title: true, excerpt: true, seoTitle: true, seoDesc: true, coverImage: true, ogImage: true },
+  });
   if (!post) return { title: "Not Found" };
-  return { title: post.seoTitle || post.title, description: post.seoDesc || post.excerpt };
+  const image = post.ogImage || post.coverImage || fallbackImg;
+  return {
+    title: post.seoTitle || post.title,
+    description: post.seoDesc || post.excerpt || "",
+    alternates: { canonical: `/blog/${slug}` },
+    openGraph: {
+      type: "article",
+      url: `${siteUrl}/blog/${slug}`,
+      title: post.seoTitle || post.title,
+      description: post.seoDesc || post.excerpt || "",
+      images: [{ url: image }],
+    },
+  };
 }
 
 const fallbackImg = "https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=1400&q=80";
@@ -41,6 +60,27 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const heroImg = post.coverImage || fallbackImg;
   const catName = post.categories[0]?.name || "Article";
   const tags = post.tags.map(t => t.name);
+  const publishedAtIso = post.publishedAt ? post.publishedAt.toISOString() : new Date().toISOString();
+
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.seoDesc || post.excerpt || "",
+    datePublished: publishedAtIso,
+    dateModified: post.updatedAt.toISOString(),
+    author: {
+      "@type": "Person",
+      name: post.author?.name || "Chronos",
+    },
+    image: [post.ogImage || post.coverImage || fallbackImg],
+    publisher: {
+      "@type": "Organization",
+      name: "Chronos",
+      url: siteUrl,
+    },
+    mainEntityOfPage: `${siteUrl}/blog/${post.slug}`,
+  };
 
   // Related posts - same category
   const relatedPosts = await prisma.post.findMany({
@@ -59,14 +99,18 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   }));
 
   // Render Tiptap body
-  const bodyContent = post.body ? renderTiptapContent(post.body as any) : null;
+  const bodyContent = post.body ? renderTiptapContent(post.body as JSONContent) : null;
 
   return (
     <BlogPostClient>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
       {/* Hero */}
       <section className="pt-14">
         <div className="relative overflow-hidden" style={{ height: "60vh", minHeight: 400, maxHeight: 560 }}>
-          <img src={heroImg} alt={post.title} className="w-full h-full object-cover" />
+          <Image src={heroImg} alt={post.title} fill priority className="object-cover" sizes="100vw" />
           <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.5) 100%)" }} />
         </div>
       </section>
@@ -142,7 +186,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               {related.map(rp => (
                 <Link key={rp.id} href={`/blog/${rp.slug}`} className="no-underline group">
                   <div className="relative overflow-hidden mb-3.5" style={{ aspectRatio: "16/10" }}>
-                    <img src={rp.img} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <Image src={rp.img} alt={rp.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
                   </div>
                   <h3 className="text-[19px] font-medium leading-tight mb-2 group-hover:text-[var(--gold-dark)] text-[var(--charcoal)] transition-colors" style={{ fontFamily: "var(--font-display)" }}>{rp.title}</h3>
                   <div className="text-[12px] text-[var(--text-light)]">{rp.date} · ⏱ {rp.readTime}</div>

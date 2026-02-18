@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Article {
   id: string;
@@ -40,7 +41,14 @@ export function LatestArticles({ posts }: { posts: Article[] }) {
               onMouseLeave={() => setHoveredId(null)}
             >
               <div className="relative overflow-hidden mb-4" style={{ aspectRatio: "4/3" }}>
-                <img src={post.image} alt={post.title} className="w-full h-full object-cover transition-transform duration-600" style={{ transform: hoveredId === post.id ? "scale(1.05)" : "scale(1)" }} />
+                <Image
+                  src={post.image}
+                  alt={post.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover transition-transform duration-600"
+                  style={{ transform: hoveredId === post.id ? "scale(1.05)" : "scale(1)" }}
+                />
                 <div className="absolute top-3 left-3">
                   <span className="text-[9.5px] font-bold tracking-[1.2px] uppercase px-3 py-1 text-white" style={{ background: catColor[post.category] || "#777" }}>{post.category}</span>
                 </div>

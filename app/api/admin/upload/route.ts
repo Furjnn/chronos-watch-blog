@@ -5,7 +5,7 @@ import path from "path";
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAuth();
+    await requireAuth(["ADMIN", "EDITOR"]);
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -54,7 +54,11 @@ export async function POST(req: NextRequest) {
       size: file.size,
       type: file.type,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Upload failed";
+    const status = typeof error === "object" && error !== null && "status" in error
+      ? Number((error as { status?: number }).status) || 500
+      : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

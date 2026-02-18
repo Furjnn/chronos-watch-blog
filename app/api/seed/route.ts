@@ -2,11 +2,26 @@
 // Sanity'ye demo içerik ekleyen API endpoint
 // Kullanım: http://localhost:3000/api/seed çalıştır (sadece 1 kere)
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { writeClient } from "@/sanity/client";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    await requireAuth(["ADMIN"]);
+
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "Seed endpoint is disabled in production" }, { status: 403 });
+    }
+
+    const seedSecret = process.env.SEED_SECRET;
+    if (seedSecret) {
+      const incoming = req.nextUrl.searchParams.get("secret");
+      if (incoming !== seedSecret) {
+        return NextResponse.json({ error: "Invalid seed secret" }, { status: 401 });
+      }
+    }
+
     // ── Check if already seeded ──
     const existing = await writeClient.fetch(`count(*[_type == "post"])`);
     if (existing > 0) {
@@ -209,8 +224,12 @@ export async function GET() {
       },
       transactionId: result.transactionId,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Seed error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Seed failed";
+    const status = typeof error === "object" && error !== null && "status" in error
+      ? Number((error as { status?: number }).status) || 500
+      : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

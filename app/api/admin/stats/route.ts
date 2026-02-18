@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    await requireAuth();
+    await requireAuth(["ADMIN", "EDITOR"]);
 
     const [postCount, reviewCount, brandCount, draftCount, recentPosts, recentReviews] = await Promise.all([
       prisma.post.count({ where: { status: "PUBLISHED" } }),
@@ -29,7 +29,11 @@ export async function GET() {
       recentPosts,
       recentReviews,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 401 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unauthorized";
+    const status = typeof error === "object" && error !== null && "status" in error
+      ? Number((error as { status?: number }).status) || 401
+      : 401;
+    return NextResponse.json({ error: message }, { status });
   }
 }

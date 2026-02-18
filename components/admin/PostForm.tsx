@@ -4,15 +4,55 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import ImageUpload from "./ImageUpload";
+import type { JSONContent } from "@tiptap/core";
 
 const TiptapEditor = dynamic(() => import("./TiptapEditor"), { ssr: false, loading: () => <div className="h-[400px] bg-slate-50 rounded-xl animate-pulse" /> });
 
+interface PostValue {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  body: unknown;
+  coverImage: string | null;
+  status: string;
+  featured: boolean;
+  readingTime: number | null;
+  authorId: string;
+  brandId: string | null;
+  categories: { id: string }[];
+  tags: { id: string }[];
+  seoTitle: string | null;
+  seoDesc: string | null;
+  ogImage: string | null;
+  author?: { id: string } | null;
+  brand?: { id: string } | null;
+}
+
 interface Props {
-  post?: any;
+  post?: PostValue;
   authors: { id: string; name: string }[];
   categories: { id: string; name: string }[];
   tags: { id: string; name: string }[];
   brands: { id: string; name: string }[];
+}
+
+interface PostFormState {
+  title: string;
+  slug: string;
+  excerpt: string;
+  body: JSONContent | string | null;
+  coverImage: string;
+  status: string;
+  featured: boolean;
+  readingTime: string;
+  authorId: string;
+  brandId: string;
+  categoryIds: string[];
+  tagIds: string[];
+  seoTitle: string;
+  seoDesc: string;
+  ogImage: string;
 }
 
 export default function PostForm({ post, authors, categories, tags, brands }: Props) {
@@ -21,18 +61,18 @@ export default function PostForm({ post, authors, categories, tags, brands }: Pr
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("content");
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<PostFormState>({
     title: post?.title || "", slug: post?.slug || "", excerpt: post?.excerpt || "",
-    body: post?.body || null, coverImage: post?.coverImage || "", status: post?.status || "DRAFT",
+    body: (post?.body as JSONContent | string | null) || null, coverImage: post?.coverImage || "", status: post?.status || "DRAFT",
     featured: post?.featured || false, readingTime: post?.readingTime?.toString() || "",
     authorId: post?.authorId || post?.author?.id || authors[0]?.id || "",
     brandId: post?.brandId || post?.brand?.id || "",
-    categoryIds: post?.categories?.map((c: any) => c.id) || [],
-    tagIds: post?.tags?.map((t: any) => t.id) || [],
+    categoryIds: post?.categories?.map((c) => c.id) || [],
+    tagIds: post?.tags?.map((t) => t.id) || [],
     seoTitle: post?.seoTitle || "", seoDesc: post?.seoDesc || "", ogImage: post?.ogImage || "",
   });
 
-  const u = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const u = <K extends keyof PostFormState>(k: K, v: PostFormState[K]) => setForm(p => ({ ...p, [k]: v }));
   const autoSlug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
   const handleSubmit = async (status?: string) => {
@@ -101,7 +141,7 @@ export default function PostForm({ post, authors, categories, tags, brands }: Pr
               </div>
               <div>
                 <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">Content</label>
-                <TiptapEditor content={form.body} onChange={(json: any) => u("body", json)} />
+                <TiptapEditor content={form.body} onChange={(json) => u("body", json)} />
               </div>
             </>
           ) : (

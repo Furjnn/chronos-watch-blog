@@ -1,7 +1,5 @@
 // ═══ src/lib/utils.ts ═══
 
-import { type ClassValue, clsx } from "clsx";
-
 /**
  * Format a date string to readable format
  */

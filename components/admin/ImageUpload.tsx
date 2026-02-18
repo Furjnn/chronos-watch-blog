@@ -1,16 +1,16 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useState, useRef, useCallback } from "react";
 
 interface Props {
   value: string;
   onChange: (url: string) => void;
-  label?: string;
   aspectRatio?: string; // e.g. "16/9", "1/1", "4/3"
   compact?: boolean;
 }
 
-export default function ImageUpload({ value, onChange, label = "Image", aspectRatio = "16/9", compact = false }: Props) {
+export default function ImageUpload({ value, onChange, aspectRatio = "16/9", compact = false }: Props) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dragOver, setDragOver] = useState(false);
@@ -77,12 +77,6 @@ export default function ImageUpload({ value, onChange, label = "Image", aspectRa
     if (file) uploadFile(file);
     // Reset input so same file can be re-selected
     e.target.value = "";
-  };
-
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes}B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
   };
 
   if (compact) {

@@ -48,7 +48,7 @@ export interface Brand {
   name: string;
   slug: { current: string };
   logo?: SanityImage;
-  description?: any[]; // Portable Text
+  description?: unknown[]; // Portable Text
   country: string;
   founded?: number;
   priceSegment: "Entry" | "Mid-Range" | "Luxury" | "Ultra-Luxury";
@@ -62,7 +62,7 @@ export interface Post {
   slug: { current: string };
   excerpt: string;
   coverImage: SanityImage;
-  body: any[]; // Portable Text
+  body: unknown[]; // Portable Text
   author: Author;
   categories: Category[];
   tags?: Tag[];
@@ -105,7 +105,7 @@ export interface Review {
     cons: string[];
   };
   gallery: SanityImage[];
-  body: any[]; // Portable Text
+  body: unknown[]; // Portable Text
   priceRange: {
     min: number;
     max: number;
@@ -129,7 +129,7 @@ export interface Guide {
   slug: { current: string };
   excerpt: string;
   coverImage: SanityImage;
-  body: any[]; // Portable Text
+  body: unknown[]; // Portable Text
   priceRange?: {
     min: number;
     max: number;

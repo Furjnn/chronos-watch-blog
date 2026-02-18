@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface PopularPost {
   id: string;
@@ -41,10 +42,13 @@ export function PopularPosts({ posts }: { posts: PopularPost[] }) {
             onMouseEnter={() => setHoveredId(featured.id)}
             onMouseLeave={() => setHoveredId(null)}
           >
-            <img
+            <Image
               src={featured.image}
               alt={featured.title}
-              className="absolute inset-0 w-full h-full object-cover opacity-75 transition-transform duration-700"
+              fill
+              priority
+              sizes="(max-width: 1024px) 100vw, 65vw"
+              className="object-cover opacity-75 transition-transform duration-700"
               style={{ transform: hoveredId === featured.id ? "scale(1.04)" : "scale(1)" }}
             />
             <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 50%, transparent 100%)" }} />
@@ -79,7 +83,14 @@ export function PopularPosts({ posts }: { posts: PopularPost[] }) {
                   #{post.rank}
                 </div>
                 <div className="w-[72px] h-[72px] min-w-[72px] overflow-hidden">
-                  <img src={post.image} alt={post.title} className="w-full h-full object-cover transition-transform duration-500" style={{ transform: hoveredId === post.id ? "scale(1.1)" : "scale(1)" }} />
+                  <Image
+                    src={post.image}
+                    alt={post.title}
+                    width={72}
+                    height={72}
+                    className="w-full h-full object-cover transition-transform duration-500"
+                    style={{ transform: hoveredId === post.id ? "scale(1.1)" : "scale(1)" }}
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-[9.5px] font-bold tracking-[1.5px] uppercase text-[var(--gold)]">{post.category}</span>

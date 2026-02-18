@@ -5,6 +5,8 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ScrollProgress } from "@/components/cta/ScrollProgress";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
   variable: "--font-display",
@@ -19,11 +21,23 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "Chronos | Premium Watch Blog & Reviews",
     template: "%s | Chronos",
   },
   description: "Your trusted source for luxury watch reviews, news, and insights.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: siteUrl,
+    title: "Chronos | Premium Watch Blog & Reviews",
+    description: "Your trusted source for luxury watch reviews, news, and insights.",
+    siteName: "Chronos",
+    images: [{ url: `${siteUrl}/og?title=Chronos` }],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

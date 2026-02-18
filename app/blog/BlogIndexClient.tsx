@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Post {
   id: string; cat: string; title: string; excerpt: string;
@@ -14,8 +15,8 @@ const catColor: Record<string, string> = {
   Vintage: "#9A3412", Interview: "#0F766E", Culture: "#B91C1C", News: "#1E40AF",
 };
 
-export default function BlogIndexClient({ posts, categories }: { posts: Post[]; categories: string[] }) {
-  const [activeCat, setActiveCat] = useState("All");
+export default function BlogIndexClient({ posts, categories, initialCategory = "All" }: { posts: Post[]; categories: string[]; initialCategory?: string }) {
+  const [activeCat, setActiveCat] = useState(categories.includes(initialCategory) ? initialCategory : "All");
   const [currentPage, setCurrentPage] = useState(1);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -65,7 +66,7 @@ export default function BlogIndexClient({ posts, categories }: { posts: Post[]; 
                   style={{ transform: hoveredId === post.id ? "translateY(-3px)" : "none" }}
                   onMouseEnter={() => setHoveredId(post.id)} onMouseLeave={() => setHoveredId(null)}>
                   <div className="relative overflow-hidden mb-3.5" style={{ aspectRatio: "4/3" }}>
-                    <img src={post.img} alt={post.title} className="w-full h-full object-cover transition-transform duration-500" style={{ transform: hoveredId === post.id ? "scale(1.04)" : "scale(1)" }} />
+                    <Image src={post.img} alt={post.title} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover transition-transform duration-500" style={{ transform: hoveredId === post.id ? "scale(1.04)" : "scale(1)" }} />
                     <div className="absolute top-3 left-3">
                       <span className="text-[9.5px] font-bold tracking-[1.2px] uppercase px-2.5 py-1 text-white" style={{ background: catColor[post.cat] || "#777" }}>{post.cat}</span>
                     </div>

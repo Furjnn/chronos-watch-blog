@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Brand {
   name: string; country: string; segment: string; founded: number;
@@ -51,7 +52,7 @@ export default function BrandsClient({ brands }: { brands: Brand[] }) {
                   style={{ transform: hovered === brand.name ? "translateY(-4px)" : "none", boxShadow: hovered === brand.name ? "0 12px 32px rgba(0,0,0,0.06)" : "none" }}
                   onMouseEnter={() => setHovered(brand.name)} onMouseLeave={() => setHovered(null)}>
                   <div className="h-[180px] overflow-hidden relative">
-                    <img src={brand.img} alt="" className="w-full h-full object-cover transition-transform duration-500" style={{ transform: hovered === brand.name ? "scale(1.05)" : "scale(1)" }} />
+                    <Image src={brand.img} alt={brand.name} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover transition-transform duration-500" style={{ transform: hovered === brand.name ? "scale(1.05)" : "scale(1)" }} />
                     <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)" }} />
                     <div className="absolute bottom-3.5 left-4">
                       <span className="text-[9.5px] font-bold tracking-[1.2px] uppercase px-2.5 py-1 text-white" style={{ background: segColor[brand.segment] || "#777" }}>{brand.segment}</span>

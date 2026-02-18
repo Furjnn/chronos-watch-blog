@@ -1,16 +1,56 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import ImageUpload from "./ImageUpload";
+import type { JSONContent } from "@tiptap/core";
 
 const TiptapEditor = dynamic(() => import("./TiptapEditor"), { ssr: false, loading: () => <div className="h-[300px] bg-slate-50 rounded-xl animate-pulse" /> });
 
+interface ReviewValue {
+  id: string;
+  title: string;
+  slug: string;
+  watchRef: string;
+  rating: number;
+  verdict: string | null;
+  body: unknown;
+  status: string;
+  authorId: string;
+  brandId: string;
+  priceMin: number | null;
+  priceMax: number | null;
+  seoTitle: string | null;
+  seoDesc: string | null;
+  specs: unknown;
+  prosAndCons: unknown;
+  gallery: unknown;
+  author?: { id: string } | null;
+  brand?: { id: string } | null;
+}
+
 interface Props {
-  review?: any;
+  review?: ReviewValue;
   authors: { id: string; name: string }[];
   brands: { id: string; name: string }[];
+}
+
+interface ReviewFormState {
+  title: string;
+  slug: string;
+  watchRef: string;
+  rating: number;
+  verdict: string;
+  body: JSONContent | string | null;
+  status: string;
+  authorId: string;
+  brandId: string;
+  priceMin: string;
+  priceMax: string;
+  seoTitle: string;
+  seoDesc: string;
 }
 
 const SPEC_FIELDS = [
@@ -33,9 +73,9 @@ export default function ReviewForm({ review, authors, brands }: Props) {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ReviewFormState>({
     title: review?.title || "", slug: review?.slug || "", watchRef: review?.watchRef || "",
-    rating: review?.rating || 8, verdict: review?.verdict || "", body: review?.body || null,
+    rating: review?.rating || 8, verdict: review?.verdict || "", body: (review?.body as JSONContent | string | null) || null,
     status: review?.status || "DRAFT",
     authorId: review?.authorId || review?.author?.id || authors[0]?.id || "",
     brandId: review?.brandId || review?.brand?.id || brands[0]?.id || "",
@@ -43,12 +83,12 @@ export default function ReviewForm({ review, authors, brands }: Props) {
     seoTitle: review?.seoTitle || "", seoDesc: review?.seoDesc || "",
   });
 
-  const [specs, setSpecs] = useState<Record<string, string>>(review?.specs || {});
-  const [pros, setPros] = useState<string[]>(review?.prosAndCons?.pros || [""]);
-  const [cons, setCons] = useState<string[]>(review?.prosAndCons?.cons || [""]);
-  const [gallery, setGallery] = useState<string[]>(review?.gallery || []);
+  const [specs, setSpecs] = useState<Record<string, string>>((review?.specs as Record<string, string>) || {});
+  const [pros, setPros] = useState<string[]>((review?.prosAndCons as { pros?: string[] } | undefined)?.pros || [""]);
+  const [cons, setCons] = useState<string[]>((review?.prosAndCons as { cons?: string[] } | undefined)?.cons || [""]);
+  const [gallery, setGallery] = useState<string[]>((review?.gallery as string[]) || []);
 
-  const u = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const u = <K extends keyof ReviewFormState>(k: K, v: ReviewFormState[K]) => setForm(p => ({ ...p, [k]: v }));
   const autoSlug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
   const handleSubmit = async (status?: string) => {
@@ -227,7 +267,7 @@ export default function ReviewForm({ review, authors, brands }: Props) {
 
       {activeTab === "content" && (
         <div className="max-w-4xl"><label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">Review Body</label>
-          <TiptapEditor content={form.body} onChange={(json: any) => u("body", json)} /></div>
+          <TiptapEditor content={form.body} onChange={(json) => u("body", json)} /></div>
       )}
 
       {activeTab === "seo" && (

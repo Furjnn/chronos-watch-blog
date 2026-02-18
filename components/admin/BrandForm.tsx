@@ -11,7 +11,20 @@ const SEGMENTS = [
   { value: "ULTRA_LUXURY", label: "Ultra-Luxury", desc: "$20,000+" },
 ];
 
-export default function BrandForm({ brand }: { brand?: any }) {
+interface BrandFormValue {
+  id: string;
+  name: string;
+  slug: string;
+  country: string;
+  founded: number | null;
+  priceSegment: string;
+  description: string | null;
+  logo: string | null;
+  heroImage: string | null;
+  website: string | null;
+}
+
+export default function BrandForm({ brand }: { brand?: BrandFormValue }) {
   const router = useRouter();
   const isEdit = !!brand;
   const [saving, setSaving] = useState(false);

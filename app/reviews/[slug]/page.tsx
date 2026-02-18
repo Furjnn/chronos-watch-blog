@@ -3,24 +3,38 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import ReviewGallery from "./ReviewGallery";
 import { renderTiptapContent } from "@/lib/tiptap-renderer";
+import type { Metadata } from "next";
+import type { JSONContent } from "@tiptap/core";
 
 export const revalidate = 3600;
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export async function generateStaticParams() {
   const reviews = await prisma.review.findMany({ where: { status: "PUBLISHED" }, select: { slug: true } });
   return reviews.map(r => ({ slug: r.slug }));
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const review = await prisma.review.findUnique({ where: { slug }, select: { title: true, verdict: true, seoTitle: true, seoDesc: true } });
+  const review = await prisma.review.findUnique({
+    where: { slug },
+    select: { title: true, verdict: true, seoTitle: true, seoDesc: true, gallery: true, ogImage: true },
+  });
   if (!review) return { title: "Not Found" };
-  return { title: review.seoTitle || `${review.title} Review`, description: review.seoDesc || review.verdict };
-}
-
-function formatDate(d: Date | null) {
-  if (!d) return "";
-  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const gallery = (review.gallery as string[]) || [];
+  const image = review.ogImage || gallery[0] || "https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=1400&q=80";
+  return {
+    title: review.seoTitle || `${review.title} Review`,
+    description: review.seoDesc || review.verdict || "",
+    alternates: { canonical: `/reviews/${slug}` },
+    openGraph: {
+      type: "article",
+      url: `${siteUrl}/reviews/${slug}`,
+      title: review.seoTitle || `${review.title} Review`,
+      description: review.seoDesc || review.verdict || "",
+      images: [{ url: image }],
+    },
+  };
 }
 
 export default async function ReviewPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -35,15 +49,45 @@ export default async function ReviewPage({ params }: { params: Promise<{ slug: s
   const gallery = (review.gallery as string[]) || [];
   const specs = (review.specs as Record<string, string>) || {};
   const prosAndCons = (review.prosAndCons as { pros?: string[]; cons?: string[] }) || {};
-  const specRows = Object.entries(specs).filter(([_, v]) => v).map(([k, v]) => {
+  const specRows = Object.entries(specs).filter(([, v]) => v).map(([k, v]) => {
     const label = k.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase());
     return [label, v];
   });
 
-  const bodyContent = review.body ? renderTiptapContent(review.body as any) : null;
+  const bodyContent = review.body ? renderTiptapContent(review.body as JSONContent) : null;
+  const publishedAtIso = review.publishedAt ? review.publishedAt.toISOString() : new Date().toISOString();
+
+  const reviewSchema = {
+    "@context": "https://schema.org",
+    "@type": "Review",
+    itemReviewed: {
+      "@type": "Product",
+      name: review.title,
+      brand: review.brand?.name,
+      model: review.watchRef,
+      image: gallery,
+    },
+    author: {
+      "@type": "Person",
+      name: review.author?.name || "Chronos",
+    },
+    reviewRating: {
+      "@type": "Rating",
+      ratingValue: review.rating,
+      bestRating: 10,
+      worstRating: 1,
+    },
+    datePublished: publishedAtIso,
+    reviewBody: review.verdict || "",
+    headline: review.title,
+  };
 
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(reviewSchema) }}
+      />
       <section className="pt-14 bg-[var(--bg)]">
         <div className="max-w-[1200px] mx-auto px-6 md:px-10 pt-8">
           <div className="text-[12px] text-[var(--text-light)] mb-6">

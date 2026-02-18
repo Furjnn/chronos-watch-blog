@@ -3,10 +3,25 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
+import { Role } from "@prisma/client";
 
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET || "chronos-secret-key-change-me");
+const authSecret = process.env.AUTH_SECRET;
+if (!authSecret) {
+  throw new Error("Missing AUTH_SECRET. Set AUTH_SECRET in your environment variables.");
+}
 
-export async function signToken(payload: { id: string; email: string; role: string }) {
+const SECRET = new TextEncoder().encode(authSecret);
+
+export class AuthError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export async function signToken(payload: { id: string; email: string; role: Role }) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("7d")
@@ -16,7 +31,7 @@ export async function signToken(payload: { id: string; email: string; role: stri
 export async function verifyToken(token: string) {
   try {
     const { payload } = await jwtVerify(token, SECRET);
-    return payload as { id: string; email: string; role: string };
+    return payload as { id: string; email: string; role: Role };
   } catch {
     return null;
   }
@@ -29,9 +44,12 @@ export async function getSession() {
   return verifyToken(token);
 }
 
-export async function requireAuth() {
+export async function requireAuth(roles?: Role[]) {
   const session = await getSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new AuthError("Unauthorized", 401);
+  if (roles && roles.length > 0 && !roles.includes(session.role)) {
+    throw new AuthError("Forbidden", 403);
+  }
   return session;
 }
 

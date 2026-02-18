@@ -4,18 +4,32 @@ import Link from "next/link";
 
 interface Props {
   stats: { posts: number; reviews: number; brands: number; drafts: number };
-  recentPosts: any[];
-  recentReviews: any[];
+  recentPosts: {
+    id: string;
+    title: string;
+    status: string;
+    views: number;
+    createdAt: string;
+    author: { name: string } | null;
+  }[];
+  recentReviews: {
+    id: string;
+    title: string;
+    rating: number;
+    createdAt: string;
+    brand: { name: string } | null;
+  }[];
 }
 
-const STATS = [
+type StatKey = keyof Props["stats"];
+
+const STATS: Array<{ key: StatKey; label: string; icon: string; color: string; gradient: string }> = [
   { key: "posts", label: "Published Posts", icon: "M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z", color: "#3B82F6", gradient: "from-blue-500 to-blue-600" },
   { key: "reviews", label: "Reviews", icon: "M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z", color: "#B8956A", gradient: "from-amber-500 to-amber-600" },
   { key: "brands", label: "Brands", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4", color: "#10B981", gradient: "from-emerald-500 to-emerald-600" },
   { key: "drafts", label: "Drafts", icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z", color: "#F59E0B", gradient: "from-yellow-500 to-orange-500" },
 ];
 
-function formatDate(iso: string) { return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -48,7 +62,7 @@ export default function DashboardClient({ stats, recentPosts, recentReviews }: P
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={card.icon} /></svg>
               </div>
             </div>
-            <div className="text-[36px] font-semibold text-slate-900 leading-none mb-1 tabular-nums">{(stats as any)[card.key]}</div>
+            <div className="text-[36px] font-semibold text-slate-900 leading-none mb-1 tabular-nums">{stats[card.key]}</div>
             <div className="text-[13px] text-slate-500 font-medium">{card.label}</div>
           </div>
         ))}

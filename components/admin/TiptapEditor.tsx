@@ -6,10 +6,11 @@ import Image from "@tiptap/extension-image";
 import LinkExt from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useRef } from "react";
+import type { JSONContent } from "@tiptap/core";
 
 interface Props {
-  content: any;
-  onChange: (json: any) => void;
+  content: JSONContent | string | null;
+  onChange: (json: JSONContent) => void;
 }
 
 function ToolbarButton({ active, onClick, children, title }: { active?: boolean; onClick: () => void; children: React.ReactNode; title: string }) {

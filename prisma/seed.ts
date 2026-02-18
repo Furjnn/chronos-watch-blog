@@ -1,5 +1,5 @@
 // prisma/seed.ts
-// Çalıştırmak için: npx tsx prisma/seed.ts
+// Run with: npx tsx prisma/seed.ts
 
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -7,59 +7,58 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Seeding database...");
+  console.log("Seeding database...");
 
-  // ── Admin User ──
-  const passwordHash = await bcrypt.hash("admin123", 12);
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    throw new Error("Missing ADMIN_EMAIL or ADMIN_PASSWORD. Set both before running seed.");
+  }
+
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
   await prisma.user.upsert({
-    where: { email: "admin@chronos.blog" },
-    update: {},
+    where: { email: adminEmail },
+    update: { passwordHash, role: "ADMIN" },
     create: {
-      email: "admin@chronos.blog",
+      email: adminEmail,
       name: "Admin",
       passwordHash,
       role: "ADMIN",
     },
   });
-  console.log("✅ Admin user created (admin@chronos.blog / admin123)");
+  console.log(`Admin user ready: ${adminEmail}`);
 
-  // ── Authors ──
   const authors = [
     { name: "James Chen", slug: "james-chen", role: "Senior Watch Editor", bio: "15 years covering the watch industry. Specializes in dive watches." },
     { name: "Sofia Laurent", slug: "sofia-laurent", role: "Buying Guide Editor", bio: "Former luxury retail consultant. Investment watch expert." },
     { name: "Emilia Hartwell", slug: "emilia-hartwell", role: "Culture & Heritage Writer", bio: "Historian focused on the cultural significance of watchmaking." },
     { name: "Luca Moretti", slug: "luca-moretti", role: "Technical Editor", bio: "Trained watchmaker turned writer. Movement specialist." },
   ];
-  for (const a of authors) {
-    await prisma.author.upsert({ where: { slug: a.slug }, update: {}, create: a });
+  for (const author of authors) {
+    await prisma.author.upsert({ where: { slug: author.slug }, update: {}, create: author });
   }
-  console.log(`✅ ${authors.length} authors created`);
 
-  // ── Categories ──
   const categories = [
-    { name: "Review", slug: "review", icon: "★" },
-    { name: "Guide", slug: "guide", icon: "▸" },
-    { name: "Heritage", slug: "heritage", icon: "◎" },
-    { name: "Technical", slug: "technical", icon: "⚙" },
-    { name: "Vintage", slug: "vintage", icon: "◉" },
-    { name: "Interview", slug: "interview", icon: "◇" },
-    { name: "Culture", slug: "culture", icon: "◆" },
-    { name: "News", slug: "news", icon: "◆" },
+    { name: "Review", slug: "review", icon: "star" },
+    { name: "Guide", slug: "guide", icon: "guide" },
+    { name: "Heritage", slug: "heritage", icon: "heritage" },
+    { name: "Technical", slug: "technical", icon: "technical" },
+    { name: "Vintage", slug: "vintage", icon: "vintage" },
+    { name: "Interview", slug: "interview", icon: "interview" },
+    { name: "Culture", slug: "culture", icon: "culture" },
+    { name: "News", slug: "news", icon: "news" },
   ];
-  for (const c of categories) {
-    await prisma.category.upsert({ where: { slug: c.slug }, update: {}, create: c });
+  for (const category of categories) {
+    await prisma.category.upsert({ where: { slug: category.slug }, update: {}, create: category });
   }
-  console.log(`✅ ${categories.length} categories created`);
 
-  // ── Tags ──
   const tagNames = ["Chronograph", "Dive Watch", "Dress Watch", "Tourbillon", "GMT", "Moonphase", "Automatic", "Manual Wind", "Pilot Watch", "Field Watch"];
   for (const name of tagNames) {
     const slug = name.toLowerCase().replace(/\s+/g, "-");
     await prisma.tag.upsert({ where: { slug }, update: {}, create: { name, slug } });
   }
-  console.log(`✅ ${tagNames.length} tags created`);
 
-  // ── Brands ──
   const brands = [
     { name: "Rolex", slug: "rolex", country: "Switzerland", founded: 1905, priceSegment: "LUXURY" as const },
     { name: "Omega", slug: "omega", country: "Switzerland", founded: 1848, priceSegment: "LUXURY" as const },
@@ -71,54 +70,50 @@ async function main() {
     { name: "IWC", slug: "iwc", country: "Switzerland", founded: 1868, priceSegment: "LUXURY" as const },
     { name: "Seiko", slug: "seiko", country: "Japan", founded: 1881, priceSegment: "ENTRY" as const },
   ];
-  for (const b of brands) {
-    await prisma.brand.upsert({ where: { slug: b.slug }, update: {}, create: b });
+  for (const brand of brands) {
+    await prisma.brand.upsert({ where: { slug: brand.slug }, update: {}, create: brand });
   }
-  console.log(`✅ ${brands.length} brands created`);
 
-  // ── Posts ──
-  const james = await prisma.author.findUnique({ where: { slug: "james-chen" } });
-  const sofia = await prisma.author.findUnique({ where: { slug: "sofia-laurent" } });
-  const emilia = await prisma.author.findUnique({ where: { slug: "emilia-hartwell" } });
-  const luca = await prisma.author.findUnique({ where: { slug: "luca-moretti" } });
-  const reviewCat = await prisma.category.findUnique({ where: { slug: "review" } });
-  const guideCat = await prisma.category.findUnique({ where: { slug: "guide" } });
-  const heritageCat = await prisma.category.findUnique({ where: { slug: "heritage" } });
-  const techCat = await prisma.category.findUnique({ where: { slug: "technical" } });
-  const rolex = await prisma.brand.findUnique({ where: { slug: "rolex" } });
-  const tudor = await prisma.brand.findUnique({ where: { slug: "tudor" } });
+  const james = await prisma.author.findUniqueOrThrow({ where: { slug: "james-chen" } });
+  const sofia = await prisma.author.findUniqueOrThrow({ where: { slug: "sofia-laurent" } });
+  const emilia = await prisma.author.findUniqueOrThrow({ where: { slug: "emilia-hartwell" } });
+  const luca = await prisma.author.findUniqueOrThrow({ where: { slug: "luca-moretti" } });
+  const reviewCat = await prisma.category.findUniqueOrThrow({ where: { slug: "review" } });
+  const guideCat = await prisma.category.findUniqueOrThrow({ where: { slug: "guide" } });
+  const heritageCat = await prisma.category.findUniqueOrThrow({ where: { slug: "heritage" } });
+  const techCat = await prisma.category.findUniqueOrThrow({ where: { slug: "technical" } });
+  const rolex = await prisma.brand.findUniqueOrThrow({ where: { slug: "rolex" } });
+  const tudor = await prisma.brand.findUniqueOrThrow({ where: { slug: "tudor" } });
 
   const posts = [
-    { title: "The New Submariner: A Deep Dive", slug: "new-submariner", excerpt: "An in-depth look at the latest iteration of the iconic diving watch.", authorId: james!.id, catId: reviewCat!.id, brandId: rolex!.id, featured: true, readingTime: 8 },
-    { title: "Investment Pieces: What to Buy in 2026", slug: "investment-pieces", excerpt: "Expert insights on which timepieces are likely to appreciate in value.", authorId: sofia!.id, catId: guideCat!.id, brandId: null, featured: true, readingTime: 12 },
-    { title: "Swiss Craftsmanship Through the Ages", slug: "swiss-craftsmanship", excerpt: "Exploring centuries-old traditions that make Swiss watchmaking the gold standard.", authorId: emilia!.id, catId: heritageCat!.id, brandId: null, featured: true, readingTime: 10 },
-    { title: "Understanding Complications", slug: "understanding-complications", excerpt: "A guide to the complex mechanisms that elevate a watch from good to exceptional.", authorId: luca!.id, catId: techCat!.id, brandId: null, featured: false, readingTime: 15 },
-    { title: "Tudor Black Bay 58: The Value Champion", slug: "tudor-black-bay", excerpt: "Tudor's flagship diver delivers a compelling package.", authorId: luca!.id, catId: reviewCat!.id, brandId: tudor!.id, featured: false, readingTime: 10 },
+    { title: "The New Submariner: A Deep Dive", slug: "new-submariner", excerpt: "An in-depth look at the latest iteration of the iconic diving watch.", authorId: james.id, catId: reviewCat.id, brandId: rolex.id, featured: true, readingTime: 8 },
+    { title: "Investment Pieces: What to Buy in 2026", slug: "investment-pieces", excerpt: "Expert insights on which timepieces are likely to appreciate in value.", authorId: sofia.id, catId: guideCat.id, brandId: null, featured: true, readingTime: 12 },
+    { title: "Swiss Craftsmanship Through the Ages", slug: "swiss-craftsmanship", excerpt: "Exploring centuries-old traditions that make Swiss watchmaking the gold standard.", authorId: emilia.id, catId: heritageCat.id, brandId: null, featured: true, readingTime: 10 },
+    { title: "Understanding Complications", slug: "understanding-complications", excerpt: "A guide to the complex mechanisms that elevate a watch from good to exceptional.", authorId: luca.id, catId: techCat.id, brandId: null, featured: false, readingTime: 15 },
+    { title: "Tudor Black Bay 58: The Value Champion", slug: "tudor-black-bay", excerpt: "Tudor's flagship diver delivers a compelling package.", authorId: luca.id, catId: reviewCat.id, brandId: tudor.id, featured: false, readingTime: 10 },
   ];
 
-  for (let i = 0; i < posts.length; i++) {
-    const p = posts[i];
+  for (let i = 0; i < posts.length; i += 1) {
+    const post = posts[i];
     await prisma.post.upsert({
-      where: { slug: p.slug },
+      where: { slug: post.slug },
       update: {},
       create: {
-        title: p.title,
-        slug: p.slug,
-        excerpt: p.excerpt,
-        body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: p.excerpt + " This article explores the topic in detail." }] }] },
+        title: post.title,
+        slug: post.slug,
+        excerpt: post.excerpt,
+        body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: `${post.excerpt} This article explores the topic in detail.` }] }] },
         status: "PUBLISHED",
-        featured: p.featured,
-        readingTime: p.readingTime,
+        featured: post.featured,
+        readingTime: post.readingTime,
         publishedAt: new Date(2026, 1, 14 - i * 2),
-        authorId: p.authorId,
-        brandId: p.brandId,
-        categories: { connect: { id: p.catId } },
+        authorId: post.authorId,
+        brandId: post.brandId,
+        categories: { connect: { id: post.catId } },
       },
     });
   }
-  console.log(`✅ ${posts.length} posts created`);
 
-  // ── Review ──
   await prisma.review.upsert({
     where: { slug: "rolex-submariner" },
     update: {},
@@ -134,21 +129,18 @@ async function main() {
       priceMax: 14800,
       status: "PUBLISHED",
       publishedAt: new Date(2026, 1, 10),
-      authorId: james!.id,
-      brandId: rolex!.id,
+      authorId: james.id,
+      brandId: rolex.id,
     },
   });
-  console.log("✅ 1 review created");
 
-  // ── Site Settings ──
   await prisma.siteSettings.upsert({
     where: { id: "main" },
     update: {},
     create: { id: "main", siteName: "Chronos" },
   });
-  console.log("✅ Site settings created");
 
-  console.log("\n🎉 Seed complete! Login with: admin@chronos.blog / admin123");
+  console.log(`Seed complete. Login email: ${adminEmail}`);
 }
 
 main()

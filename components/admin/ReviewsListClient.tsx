@@ -21,7 +21,19 @@ function RatingBar({ rating }: { rating: number }) {
   );
 }
 
-export default function ReviewsListClient({ reviews }: { reviews: any[] }) {
+interface ReviewListItem {
+  id: string;
+  title: string;
+  watchRef: string;
+  rating: number;
+  status: string;
+  createdAt: string;
+  brand: {
+    name: string;
+  } | null;
+}
+
+export default function ReviewsListClient({ reviews }: { reviews: ReviewListItem[] }) {
   const router = useRouter();
   const remove = async (id: string, t: string) => { if (!confirm(`Delete "${t}"?`)) return; await fetch(`/api/admin/reviews/${id}`, { method: "DELETE" }); router.refresh(); };
 
@@ -39,7 +51,8 @@ export default function ReviewsListClient({ reviews }: { reviews: any[] }) {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[920px]">
           <thead>
             <tr className="bg-slate-50/80">
               <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-6 py-3.5">Watch</th>
@@ -89,6 +102,7 @@ export default function ReviewsListClient({ reviews }: { reviews: any[] }) {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

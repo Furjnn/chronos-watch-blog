@@ -1,11 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import type { Metadata } from "next";
+import Image from "next/image";
 
 export const revalidate = 60;
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Watch Reviews",
   description: "Hands-on reviews with detailed specs, ratings, and honest verdicts",
+  alternates: { canonical: "/reviews" },
+  openGraph: {
+    title: "Watch Reviews | Chronos",
+    description: "Hands-on reviews with detailed specs, ratings, and honest verdicts",
+    url: `${siteUrl}/reviews`,
+    type: "website",
+  },
 };
 
 const fallbackImg = "https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=600&q=80";
@@ -39,8 +49,8 @@ export default async function ReviewsPage() {
                 const img = gallery[0] || fallbackImg;
                 return (
                   <Link key={r.id} href={`/reviews/${r.slug}`} className="no-underline group">
-                    <div className="overflow-hidden mb-3.5 bg-[var(--bg-off)]" style={{ aspectRatio: "4/3" }}>
-                      <img src={img} alt={r.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <div className="relative overflow-hidden mb-3.5 bg-[var(--bg-off)]" style={{ aspectRatio: "4/3" }}>
+                      <Image src={img} alt={r.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                     </div>
                     <div className="text-[11px] font-medium text-[var(--gold)] tracking-[1px] uppercase mb-1">{r.brand?.name}</div>
                     <h3 className="text-[19px] font-medium text-[var(--charcoal)] leading-tight mb-2 group-hover:text-[var(--gold-dark)] transition-colors" style={{ fontFamily: "var(--font-display)" }}>{r.title}</h3>

@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getErrorMessage, getErrorStatus } from "@/lib/api-error";
 
 export async function GET() {
   try {
-    await requireAuth();
+    await requireAuth(["ADMIN", "EDITOR"]);
     const reviews = await prisma.review.findMany({
       orderBy: { createdAt: "desc" },
       select: { id: true, title: true, slug: true, watchRef: true, rating: true, status: true, views: true, createdAt: true, brand: { select: { name: true } }, author: { select: { name: true } } },
     });
     return NextResponse.json({ reviews });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 401 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: getErrorMessage(error, "Unauthorized") }, { status: getErrorStatus(error, 401) });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAuth();
+    await requireAuth(["ADMIN", "EDITOR"]);
     const data = await req.json();
     const slug = data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const review = await prisma.review.create({
@@ -34,7 +35,9 @@ export async function POST(req: NextRequest) {
       },
     });
     return NextResponse.json(review, { status: 201 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 400 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: getErrorMessage(error, "Bad request") }, { status: getErrorStatus(error, 400) });
   }
 }
+
+

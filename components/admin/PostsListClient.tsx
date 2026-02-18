@@ -76,7 +76,8 @@ export default function PostsListClient({ posts }: { posts: Post[] }) {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[980px]">
           <thead>
             <tr className="bg-slate-50/80">
               <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-6 py-3.5">Article</th>
@@ -137,6 +138,7 @@ export default function PostsListClient({ posts }: { posts: Post[] }) {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

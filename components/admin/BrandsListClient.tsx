@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,20 @@ const segStyle: Record<string, { bg: string; text: string }> = {
 };
 const segLabel: Record<string, string> = { ENTRY: "Entry", MID_RANGE: "Mid-Range", LUXURY: "Luxury", ULTRA_LUXURY: "Ultra-Luxury" };
 
-export default function BrandsListClient({ brands }: { brands: any[] }) {
+interface BrandListItem {
+  id: string;
+  name: string;
+  logo: string | null;
+  country: string;
+  founded: number | null;
+  priceSegment: string;
+  _count: {
+    posts: number;
+    reviews: number;
+  };
+}
+
+export default function BrandsListClient({ brands }: { brands: BrandListItem[] }) {
   const router = useRouter();
   const remove = async (id: string, n: string) => { if (!confirm(`Delete "${n}" and all associated content?`)) return; await fetch(`/api/admin/brands/${id}`, { method: "DELETE" }); router.refresh(); };
 
@@ -29,7 +43,8 @@ export default function BrandsListClient({ brands }: { brands: any[] }) {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[860px]">
           <thead>
             <tr className="bg-slate-50/80">
               <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-6 py-3.5">Brand</th>
@@ -77,6 +92,7 @@ export default function BrandsListClient({ brands }: { brands: any[] }) {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
