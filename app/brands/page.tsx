@@ -1,5 +1,4 @@
-import { client, urlFor } from "@/sanity/client";
-import { brandsQuery } from "@/sanity/queries";
+import { prisma } from "@/lib/prisma";
 import BrandsClient from "./BrandsClient";
 
 export const revalidate = 60;
@@ -9,22 +8,22 @@ export const metadata = {
   description: "Explore the world's finest watchmakers",
 };
 
-function formatImage(img: any) {
-  if (!img?.asset) return "https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=400&q=80";
-  return urlFor(img).width(400).quality(80).url();
-}
+const fallbackImg = "https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=400&q=80";
 
 export default async function BrandsPage() {
-  const rawBrands = await client.fetch(brandsQuery) || [];
+  const rawBrands = await prisma.brand.findMany({
+    orderBy: { name: "asc" },
+    include: { _count: { select: { posts: true, reviews: true } } },
+  });
 
-  const brands = rawBrands.map((b: any) => ({
+  const brands = rawBrands.map(b => ({
     name: b.name,
-    country: `${b.country}`,
-    segment: b.priceSegment || "Luxury",
+    country: b.country,
+    segment: b.priceSegment.replace("_", "-"),
     founded: b.founded || 0,
-    articles: b.articleCount || 0,
-    img: formatImage(b.heroImage || b.logo),
-    slug: b.slug?.current || "",
+    articles: b._count.posts + b._count.reviews,
+    img: b.heroImage || b.logo || fallbackImg,
+    slug: b.slug,
   }));
 
   return <BrandsClient brands={brands} />;

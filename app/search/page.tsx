@@ -1,5 +1,4 @@
-import { client, urlFor } from "@/sanity/client";
-import { searchQuery } from "@/sanity/queries";
+import { prisma } from "@/lib/prisma";
 import SearchClient from "./SearchClient";
 
 export const metadata = {
@@ -7,24 +6,11 @@ export const metadata = {
   description: "Search articles, reviews, and brands",
 };
 
-function formatImage(img: any) {
-  if (!img?.asset) return "https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=300&q=80";
-  return urlFor(img).width(300).quality(80).url();
-}
+const fallbackImg = "https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=300&q=80";
 
-function formatDate(dateStr: string) {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function getTypeLabel(type: string) {
-  const labels: Record<string, string> = { post: "Article", review: "Review", brand: "Brand", guide: "Guide" };
-  return labels[type] || "Article";
-}
-
-function getUrl(type: string, slug: string) {
-  const prefixes: Record<string, string> = { post: "/blog", review: "/reviews", brand: "/brands", guide: "/guides" };
-  return `${prefixes[type] || "/blog"}/${slug}`;
+function formatDate(d: Date | null) {
+  if (!d) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
@@ -32,18 +18,64 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const query = q || "";
 
   let results: any[] = [];
+
   if (query.length > 0) {
-    const raw = await client.fetch(searchQuery, { q: query });
-    results = (raw || []).map((r: any) => ({
-      id: r._id,
-      type: getTypeLabel(r._type),
-      title: r.title,
-      excerpt: r.excerpt || "",
-      date: formatDate(r.publishedAt),
-      readTime: r.readingTime ? `${r.readingTime} min` : "",
-      img: formatImage(r.image),
-      slug: getUrl(r._type, r.slug?.current || ""),
-    }));
+    const searchTerm = `%${query}%`;
+
+    // Search posts
+    const posts = await prisma.post.findMany({
+      where: {
+        status: "PUBLISHED",
+        OR: [
+          { title: { contains: query, mode: "insensitive" } },
+          { excerpt: { contains: query, mode: "insensitive" } },
+        ],
+      },
+      take: 20,
+      orderBy: { publishedAt: "desc" },
+    });
+
+    // Search reviews
+    const reviews = await prisma.review.findMany({
+      where: {
+        status: "PUBLISHED",
+        OR: [
+          { title: { contains: query, mode: "insensitive" } },
+          { verdict: { contains: query, mode: "insensitive" } },
+        ],
+      },
+      take: 10,
+      include: { brand: true },
+    });
+
+    // Search brands
+    const brands = await prisma.brand.findMany({
+      where: {
+        OR: [
+          { name: { contains: query, mode: "insensitive" } },
+          { description: { contains: query, mode: "insensitive" } },
+        ],
+      },
+      take: 10,
+    });
+
+    // Merge results
+    results = [
+      ...posts.map(p => ({
+        id: p.id, type: "Article", title: p.title, excerpt: p.excerpt || "",
+        date: formatDate(p.publishedAt), readTime: p.readingTime ? `${p.readingTime} min` : "",
+        img: p.coverImage || fallbackImg, slug: `/blog/${p.slug}`,
+      })),
+      ...reviews.map(r => ({
+        id: r.id, type: "Review", title: r.title, excerpt: r.verdict || "",
+        date: formatDate(r.publishedAt), readTime: "",
+        img: ((r.gallery as string[]) || [])[0] || fallbackImg, slug: `/reviews/${r.slug}`,
+      })),
+      ...brands.map(b => ({
+        id: b.id, type: "Brand", title: b.name, excerpt: b.description || "",
+        date: "", readTime: "", img: b.heroImage || b.logo || fallbackImg, slug: `/brands/${b.slug}`,
+      })),
+    ];
   }
 
   return <SearchClient initialResults={results} initialQuery={query} />;

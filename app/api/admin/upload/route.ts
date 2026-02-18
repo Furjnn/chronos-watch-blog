@@ -1,0 +1,60 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
+import { writeFile, mkdir } from "fs/promises";
+import path from "path";
+
+export async function POST(req: NextRequest) {
+  try {
+    await requireAuth();
+
+    const formData = await req.formData();
+    const file = formData.get("file") as File | null;
+
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json({ error: "Invalid file type. Allowed: JPG, PNG, WebP, GIF, SVG" }, { status: 400 });
+    }
+
+    // Max 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: "File too large. Max 10MB" }, { status: 400 });
+    }
+
+    // Create uploads directory if not exists
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    await mkdir(uploadDir, { recursive: true });
+
+    // Generate unique filename
+    const ext = file.name.split(".").pop() || "jpg";
+    const timestamp = Date.now();
+    const safeName = file.name
+      .replace(/\.[^.]+$/, "")
+      .replace(/[^a-z0-9]/gi, "-")
+      .toLowerCase()
+      .slice(0, 50);
+    const filename = `${timestamp}-${safeName}.${ext}`;
+
+    // Write file
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const filepath = path.join(uploadDir, filename);
+    await writeFile(filepath, buffer);
+
+    // Return public URL
+    const url = `/uploads/${filename}`;
+
+    return NextResponse.json({
+      url,
+      filename,
+      size: file.size,
+      type: file.type,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

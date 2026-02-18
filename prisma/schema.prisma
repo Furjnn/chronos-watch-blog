@@ -1,0 +1,198 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───
+
+enum Role {
+  ADMIN
+  EDITOR
+  AUTHOR
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PriceSegment {
+  ENTRY
+  MID_RANGE
+  LUXURY
+  ULTRA_LUXURY
+}
+
+// ─── User ───
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  passwordHash  String
+  role          Role     @default(EDITOR)
+  avatar        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── Author ───
+
+model Author {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  bio        String?  @db.Text
+  avatar     String?
+  role       String?
+  socials    Json?    // { twitter, instagram, website }
+  posts      Post[]
+  reviews    Review[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ─── Category ───
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  icon        String?
+  posts       Post[]   @relation("PostCategories")
+  createdAt   DateTime @default(now())
+}
+
+// ─── Tag ───
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  posts     Post[]   @relation("PostTags")
+  createdAt DateTime @default(now())
+}
+
+// ─── Brand ───
+
+model Brand {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  slug         String        @unique
+  country      String
+  founded      Int?
+  priceSegment PriceSegment  @default(LUXURY)
+  description  String?       @db.Text
+  logo         String?
+  heroImage    String?
+  website      String?
+  posts        Post[]
+  reviews      Review[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+// ─── Post ───
+
+model Post {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  excerpt     String?    @db.Text
+  body        Json?      // Tiptap JSON content
+  coverImage  String?
+  status      PostStatus @default(DRAFT)
+  featured    Boolean    @default(false)
+  readingTime Int?
+  publishedAt DateTime?
+  seoTitle    String?
+  seoDesc     String?    @db.Text
+  ogImage     String?
+
+  author      Author     @relation(fields: [authorId], references: [id])
+  authorId    String
+  brand       Brand?     @relation(fields: [brandId], references: [id])
+  brandId     String?
+  categories  Category[] @relation("PostCategories")
+  tags        Tag[]      @relation("PostTags")
+
+  views       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([featured])
+}
+
+// ─── Review ───
+
+model Review {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  watchRef    String
+  rating      Float
+  verdict     String?    @db.Text
+  body        Json?      // Tiptap JSON content
+  specs       Json?      // { caseSize, movement, waterResistance... }
+  prosAndCons Json?      // { pros: [], cons: [] }
+  gallery     Json?      // ["url1", "url2", ...]
+  priceMin    Int?
+  priceMax    Int?
+  currency    String     @default("USD")
+  status      PostStatus @default(DRAFT)
+  publishedAt DateTime?
+  seoTitle    String?
+  seoDesc     String?    @db.Text
+  ogImage     String?
+
+  author      Author     @relation(fields: [authorId], references: [id])
+  authorId    String
+  brand       Brand      @relation(fields: [brandId], references: [id])
+  brandId     String
+
+  views       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([status, publishedAt])
+}
+
+// ─── Media ───
+
+model Media {
+  id        String   @id @default(cuid())
+  url       String
+  key       String   @unique // S3 key
+  filename  String
+  size      Int      // bytes
+  width     Int?
+  height    Int?
+  alt       String?
+  folder    String?  @default("general")
+  mimeType  String?
+  createdAt DateTime @default(now())
+}
+
+// ─── Site Settings (Singleton) ───
+
+model SiteSettings {
+  id              String  @id @default("main")
+  siteName        String  @default("Chronos")
+  logo            String?
+  socials         Json?   // { instagram, twitter, youtube, pinterest }
+  seoTitle        String?
+  seoDescription  String? @db.Text
+  ogImage         String?
+  footerText      String?
+  analyticsId     String?
+  updatedAt       DateTime @updatedAt
+}

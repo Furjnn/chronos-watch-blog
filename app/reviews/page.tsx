@@ -1,5 +1,4 @@
-import { client, urlFor } from "@/sanity/client";
-import { reviewsIndexQuery } from "@/sanity/queries";
+import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
 export const revalidate = 60;
@@ -9,13 +8,14 @@ export const metadata = {
   description: "Hands-on reviews with detailed specs, ratings, and honest verdicts",
 };
 
-function formatImage(img: any) {
-  if (!img?.asset) return "https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=600&q=80";
-  return urlFor(img).width(600).quality(80).url();
-}
+const fallbackImg = "https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=600&q=80";
 
 export default async function ReviewsPage() {
-  const reviews = await client.fetch(reviewsIndexQuery) || [];
+  const reviews = await prisma.review.findMany({
+    where: { status: "PUBLISHED" },
+    orderBy: { publishedAt: "desc" },
+    include: { brand: true },
+  });
 
   return (
     <div>
@@ -31,29 +31,29 @@ export default async function ReviewsPage() {
       <section className="py-12 bg-[var(--bg)]">
         <div className="max-w-[1200px] mx-auto px-6 md:px-10">
           {reviews.length === 0 ? (
-            <p className="text-center text-[var(--text-light)] py-20">No reviews yet. Add reviews in the CMS.</p>
+            <p className="text-center text-[var(--text-light)] py-20">No reviews yet.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
-              {reviews.map((r: any) => (
-                <Link key={r._id} href={`/reviews/${r.slug?.current}`} className="no-underline group">
-                  <div className="overflow-hidden mb-3.5 bg-[var(--bg-off)]" style={{ aspectRatio: "4/3" }}>
-                    <img src={formatImage(r.gallery?.[0])} alt={r.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  </div>
-                  <div className="text-[11px] font-medium text-[var(--gold)] tracking-[1px] uppercase mb-1">{r.brand?.name}</div>
-                  <h3 className="text-[19px] font-medium text-[var(--charcoal)] leading-tight mb-2 group-hover:text-[var(--gold-dark)] transition-colors" style={{ fontFamily: "var(--font-display)" }}>{r.title}</h3>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[22px] font-light text-[var(--gold)]" style={{ fontFamily: "var(--font-display)" }}>{r.rating}</span>
-                      <span className="text-[12px] text-[var(--text-light)]">/10</span>
+              {reviews.map(r => {
+                const gallery = (r.gallery as string[]) || [];
+                const img = gallery[0] || fallbackImg;
+                return (
+                  <Link key={r.id} href={`/reviews/${r.slug}`} className="no-underline group">
+                    <div className="overflow-hidden mb-3.5 bg-[var(--bg-off)]" style={{ aspectRatio: "4/3" }}>
+                      <img src={img} alt={r.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     </div>
-                    {r.priceRange && (
-                      <span className="text-[14px] font-semibold text-[var(--charcoal)]">
-                        ${r.priceRange.min?.toLocaleString()}+
-                      </span>
-                    )}
-                  </div>
-                </Link>
-              ))}
+                    <div className="text-[11px] font-medium text-[var(--gold)] tracking-[1px] uppercase mb-1">{r.brand?.name}</div>
+                    <h3 className="text-[19px] font-medium text-[var(--charcoal)] leading-tight mb-2 group-hover:text-[var(--gold-dark)] transition-colors" style={{ fontFamily: "var(--font-display)" }}>{r.title}</h3>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[22px] font-light text-[var(--gold)]" style={{ fontFamily: "var(--font-display)" }}>{r.rating}</span>
+                        <span className="text-[12px] text-[var(--text-light)]">/10</span>
+                      </div>
+                      {r.priceMin && <span className="text-[14px] font-semibold text-[var(--charcoal)]">${r.priceMin.toLocaleString()}+</span>}
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
