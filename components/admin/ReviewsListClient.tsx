@@ -27,6 +27,8 @@ interface ReviewListItem {
   watchRef: string;
   rating: number;
   status: string;
+  isScheduled: boolean;
+  scheduledAt: string | null;
   createdAt: string;
   brand: {
     name: string;
@@ -73,6 +75,7 @@ export default function ReviewsListClient({ reviews }: { reviews: ReviewListItem
               </td></tr>
             ) : reviews.map(r => {
               const st = statusStyles[r.status] || statusStyles.DRAFT;
+              const scheduled = r.isScheduled;
               return (
                 <tr key={r.id} className="group hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4">
@@ -82,11 +85,19 @@ export default function ReviewsListClient({ reviews }: { reviews: ReviewListItem
                   <td className="px-4 py-4 text-[13px] text-slate-400 font-mono">{r.watchRef}</td>
                   <td className="px-4 py-4"><RatingBar rating={r.rating} /></td>
                   <td className="px-4 py-4">
-                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${st.bg} ${st.text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />{r.status}
-                    </span>
+                    {scheduled ? (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />SCHEDULED
+                      </span>
+                    ) : (
+                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${st.bg} ${st.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />{r.status}
+                      </span>
+                    )}
                   </td>
-                  <td className="px-4 py-4 text-[13px] text-slate-400">{formatDate(r.createdAt)}</td>
+                  <td className="px-4 py-4 text-[13px] text-slate-400">
+                    {scheduled && r.scheduledAt ? `Sched: ${formatDate(r.scheduledAt)}` : formatDate(r.createdAt)}
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Link href={`/admin/reviews/${r.id}/edit`} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#B8956A] no-underline transition-colors">

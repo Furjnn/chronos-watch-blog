@@ -25,6 +25,7 @@ interface PostValue {
   seoTitle: string | null;
   seoDesc: string | null;
   ogImage: string | null;
+  scheduledAt: string | Date | null;
   author?: { id: string } | null;
   brand?: { id: string } | null;
 }
@@ -53,6 +54,7 @@ interface PostFormState {
   seoTitle: string;
   seoDesc: string;
   ogImage: string;
+  scheduledAt: string;
 }
 
 export default function PostForm({ post, authors, categories, tags, brands }: Props) {
@@ -70,15 +72,25 @@ export default function PostForm({ post, authors, categories, tags, brands }: Pr
     categoryIds: post?.categories?.map((c) => c.id) || [],
     tagIds: post?.tags?.map((t) => t.id) || [],
     seoTitle: post?.seoTitle || "", seoDesc: post?.seoDesc || "", ogImage: post?.ogImage || "",
+    scheduledAt:
+      post?.scheduledAt && !Number.isNaN(new Date(post.scheduledAt).getTime())
+        ? new Date(post.scheduledAt).toISOString().slice(0, 16)
+        : "",
   });
 
   const u = <K extends keyof PostFormState>(k: K, v: PostFormState[K]) => setForm(p => ({ ...p, [k]: v }));
   const autoSlug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-  const handleSubmit = async (status?: string) => {
+  const handleSubmit = async (status?: string, forceSchedule = false) => {
     if (!form.title.trim()) { alert("Title is required"); return; }
+    if (forceSchedule && !form.scheduledAt) { alert("Select a schedule date and time first."); return; }
     setSaving(true);
-    const payload = { ...form, status: status || form.status, readingTime: form.readingTime ? parseInt(form.readingTime) : null };
+    const payload = {
+      ...form,
+      status: forceSchedule ? "DRAFT" : (status || form.status),
+      readingTime: form.readingTime ? parseInt(form.readingTime) : null,
+      scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : null,
+    };
     try {
       const url = isEdit ? `/api/admin/posts/${post.id}` : "/api/admin/posts";
       const res = await fetch(url, { method: isEdit ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -104,6 +116,7 @@ export default function PostForm({ post, authors, categories, tags, brands }: Pr
         <div className="flex items-center gap-3">
           {isEdit && form.status === "PUBLISHED" && <span className="text-[11px] font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700">PUBLISHED</span>}
           <button onClick={() => handleSubmit("DRAFT")} disabled={saving} className="px-5 py-2.5 bg-white border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 cursor-pointer hover:bg-slate-50 disabled:opacity-50 transition-colors">Save Draft</button>
+          <button onClick={() => handleSubmit("DRAFT", true)} disabled={saving} className="px-5 py-2.5 bg-white border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 cursor-pointer hover:bg-slate-50 disabled:opacity-50 transition-colors">Schedule</button>
           <button onClick={() => handleSubmit("PUBLISHED")} disabled={saving} className="px-5 py-2.5 bg-[#B8956A] border-none rounded-lg text-[13px] font-semibold text-white cursor-pointer hover:bg-[#A07D5A] disabled:opacity-50 transition-colors shadow-sm">{saving ? "Saving..." : "Publish"}</button>
         </div>
       </div>
@@ -242,6 +255,16 @@ export default function PostForm({ post, authors, categories, tags, brands }: Pr
               <div>
                 <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">Reading Time (min)</label>
                 <input type="number" value={form.readingTime} onChange={e => u("readingTime", e.target.value)} className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-[#B8956A] transition-colors" />
+              </div>
+              <div>
+                <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">Schedule Publish At</label>
+                <input
+                  type="datetime-local"
+                  value={form.scheduledAt}
+                  onChange={e => u("scheduledAt", e.target.value)}
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-[#B8956A] transition-colors"
+                />
+                <p className="mt-1 text-[11px] text-slate-400">Set a future date and click Schedule.</p>
               </div>
             </div>
           </div>

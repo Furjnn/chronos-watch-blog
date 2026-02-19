@@ -1,0 +1,106 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useI18n } from "@/components/i18n/I18nProvider";
+
+export default function MemberLoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { t, localizePath } = useI18n();
+  const nextPath = searchParams.get("next") || localizePath("/account");
+  const registerHref = localizePath(`/account/register?next=${encodeURIComponent(nextPath)}`);
+  const forgotPasswordHref = localizePath("/account/forgot-password");
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/member/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || t("auth.loginFailed", "Login failed"));
+        setLoading(false);
+        return;
+      }
+
+      router.push(nextPath);
+      router.refresh();
+    } catch {
+      setError(t("auth.somethingWrong", "Something went wrong"));
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-[calc(100vh-56px)] flex items-center justify-center px-6 py-20">
+      <div className="w-full max-w-[420px] rounded-2xl border border-[var(--border)] bg-white p-7 shadow-sm">
+        <h1 className="text-[28px] font-semibold text-[var(--charcoal)]" style={{ fontFamily: "var(--font-display)" }}>
+          {t("auth.signInTitle", "Sign in")}
+        </h1>
+        <p className="mt-1 text-[14px] text-[var(--text-light)]">{t("auth.signInSubtitle", "Access your Chronos member account.")}</p>
+
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">{error}</div>}
+
+          <div>
+            <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-wider text-[var(--text-light)]">{t("auth.email", "Email")}</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder={t("auth.emailPlaceholder", "you@example.com")}
+              className="w-full rounded-lg border border-[var(--border)] px-4 py-3 text-[14px] outline-none transition-colors focus:border-[var(--gold)]"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-wider text-[var(--text-light)]">{t("auth.password", "Password")}</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder={t("auth.passwordHint", "At least 8 characters")}
+              className="w-full rounded-lg border border-[var(--border)] px-4 py-3 text-[14px] outline-none transition-colors focus:border-[var(--gold)]"
+              required
+            />
+            <div className="mt-2 text-right">
+              <Link href={forgotPasswordHref} className="text-[12px] font-semibold text-[var(--text-secondary)] no-underline hover:text-[var(--gold)]">
+                {t("auth.forgotPassword", "Forgot password?")}
+              </Link>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-[var(--charcoal)] px-4 py-3 text-[14px] font-semibold text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? t("auth.signingIn", "Signing in...") : t("auth.signIn", "Sign In")}
+          </button>
+        </form>
+
+        <p className="mt-5 text-[13px] text-[var(--text-light)]">
+          {t("auth.newHere", "New here?")} {" "}
+          <Link href={registerHref} className="font-semibold text-[var(--charcoal)] no-underline hover:text-[var(--gold)]">
+            {t("auth.createAnAccount", "Create an account")}
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}

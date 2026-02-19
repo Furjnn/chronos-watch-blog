@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+import { absoluteUrl } from "@/lib/seo";
+import { SUPPORTED_LOCALES } from "@/lib/i18n/config";
+import { localizePathname } from "@/lib/i18n/routing";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [posts, reviews, brands] = await Promise.all([
@@ -10,34 +11,59 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     prisma.brand.findMany({ select: { slug: true, updatedAt: true } }),
   ]);
 
-  const staticRoutes: MetadataRoute.Sitemap = [
-    { url: `${siteUrl}/`, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
-    { url: `${siteUrl}/blog`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${siteUrl}/reviews`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${siteUrl}/brands`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
-    { url: `${siteUrl}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+  const contentDates = [
+    ...posts.map((post) => post.updatedAt),
+    ...reviews.map((review) => review.updatedAt),
+    ...brands.map((brand) => brand.updatedAt),
   ];
+  const staticLastModified =
+    contentDates.length > 0
+      ? new Date(Math.max(...contentDates.map((date) => date.getTime())))
+      : new Date();
 
-  const postRoutes = posts.map((post) => ({
-    url: `${siteUrl}/blog/${post.slug}`,
-    lastModified: post.updatedAt,
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }));
+  const staticConfig: Record<string, { changeFrequency: "daily" | "weekly" | "monthly"; priority: number }> = {
+    "/": { changeFrequency: "daily", priority: 1 },
+    "/blog": { changeFrequency: "daily", priority: 0.9 },
+    "/reviews": { changeFrequency: "daily", priority: 0.9 },
+    "/brands": { changeFrequency: "weekly", priority: 0.8 },
+    "/about": { changeFrequency: "monthly", priority: 0.5 },
+  };
+  const staticBasePaths = Object.keys(staticConfig) as (keyof typeof staticConfig)[];
+  const staticRoutes: MetadataRoute.Sitemap = SUPPORTED_LOCALES.flatMap((locale) =>
+    staticBasePaths.map((basePath) => ({
+      url: absoluteUrl(localizePathname(basePath, locale)),
+      lastModified: staticLastModified,
+      changeFrequency: staticConfig[basePath].changeFrequency,
+      priority: staticConfig[basePath].priority,
+    })),
+  );
 
-  const reviewRoutes = reviews.map((review) => ({
-    url: `${siteUrl}/reviews/${review.slug}`,
-    lastModified: review.updatedAt,
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }));
+  const postRoutes = SUPPORTED_LOCALES.flatMap((locale) =>
+    posts.map((post) => ({
+      url: absoluteUrl(localizePathname(`/blog/${post.slug}`, locale)),
+      lastModified: post.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    })),
+  );
 
-  const brandRoutes = brands.map((brand) => ({
-    url: `${siteUrl}/brands/${brand.slug}`,
-    lastModified: brand.updatedAt,
-    changeFrequency: "monthly" as const,
-    priority: 0.6,
-  }));
+  const reviewRoutes = SUPPORTED_LOCALES.flatMap((locale) =>
+    reviews.map((review) => ({
+      url: absoluteUrl(localizePathname(`/reviews/${review.slug}`, locale)),
+      lastModified: review.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    })),
+  );
+
+  const brandRoutes = SUPPORTED_LOCALES.flatMap((locale) =>
+    brands.map((brand) => ({
+      url: absoluteUrl(localizePathname(`/brands/${brand.slug}`, locale)),
+      lastModified: brand.updatedAt,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
+  );
 
   return [...staticRoutes, ...postRoutes, ...reviewRoutes, ...brandRoutes];
 }

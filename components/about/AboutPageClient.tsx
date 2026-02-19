@@ -3,8 +3,10 @@
 import { useState } from "react";
 import type { AboutPageContent } from "@/lib/about-page";
 import Image from "next/image";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 export default function AboutPageClient({ about }: { about: AboutPageContent }) {
+  const { t } = useI18n();
   const [hoveredMember, setHoveredMember] = useState<string | null>(null);
 
   return (
@@ -79,17 +81,17 @@ export default function AboutPageClient({ about }: { about: AboutPageContent }) 
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-[11px] font-semibold tracking-[1px] uppercase text-[var(--text-secondary)] block mb-1.5">Name</label>
-                <input placeholder="Your name" className="w-full px-4 py-3 border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text)] outline-none focus:border-[var(--gold)] transition-colors" />
+                <label className="text-[11px] font-semibold tracking-[1px] uppercase text-[var(--text-secondary)] block mb-1.5">{t("about.formName", "Name")}</label>
+                <input placeholder={t("about.formNamePlaceholder", "Your name")} className="w-full px-4 py-3 border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text)] outline-none focus:border-[var(--gold)] transition-colors" />
               </div>
               <div>
-                <label className="text-[11px] font-semibold tracking-[1px] uppercase text-[var(--text-secondary)] block mb-1.5">Email</label>
-                <input type="email" placeholder="your@email.com" className="w-full px-4 py-3 border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text)] outline-none focus:border-[var(--gold)] transition-colors" />
+                <label className="text-[11px] font-semibold tracking-[1px] uppercase text-[var(--text-secondary)] block mb-1.5">{t("about.formEmail", "Email")}</label>
+                <input type="email" placeholder={t("about.formEmailPlaceholder", "your@email.com")} className="w-full px-4 py-3 border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text)] outline-none focus:border-[var(--gold)] transition-colors" />
               </div>
             </div>
             <div>
-              <label className="text-[11px] font-semibold tracking-[1px] uppercase text-[var(--text-secondary)] block mb-1.5">Message</label>
-              <textarea rows={5} placeholder="Your message..." className="w-full px-4 py-3 border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text)] outline-none resize-y focus:border-[var(--gold)] transition-colors" />
+              <label className="text-[11px] font-semibold tracking-[1px] uppercase text-[var(--text-secondary)] block mb-1.5">{t("about.formMessage", "Message")}</label>
+              <textarea rows={5} placeholder={t("about.formMessagePlaceholder", "Your message...")} className="w-full px-4 py-3 border border-[var(--border)] bg-[var(--bg)] text-[14px] text-[var(--text)] outline-none resize-y focus:border-[var(--gold)] transition-colors" />
             </div>
             <button className="self-start px-8 py-3.5 bg-[var(--charcoal)] border-none text-white text-[12px] font-semibold tracking-[2px] uppercase cursor-pointer hover:bg-[var(--gold)] transition-colors">{about.contactButtonLabel}</button>
           </div>

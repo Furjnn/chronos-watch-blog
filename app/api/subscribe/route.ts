@@ -1,55 +1,60 @@
-// ═══ src/app/api/subscribe/route.ts ═══
 import { NextRequest, NextResponse } from "next/server";
+import { trackMetricEvent } from "@/lib/metrics";
+import { getRequestContext } from "@/lib/request-context";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { subscribeToNewsletter } from "@/lib/newsletter";
 
 export async function POST(req: NextRequest) {
   try {
     const { email } = await req.json();
+    const context = getRequestContext(req);
+    const normalizedEmail = String(email || "").trim().toLowerCase();
 
-    if (!email || !email.includes("@")) {
+    const rateLimit = checkRateLimit(`newsletter:${context.ipAddress || "unknown"}`, {
+      windowMs: 10 * 60 * 1000,
+      max: 8,
+      blockDurationMs: 30 * 60 * 1000,
+    });
+    if (!rateLimit.ok) {
+      return NextResponse.json(
+        {
+          error: "Too many requests. Please try again later.",
+          retryAfterSeconds: rateLimit.retryAfterSeconds,
+        },
+        { status: 429 },
+      );
+    }
+
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
       return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
     }
 
-    // Mailchimp integration
-    // Gerçek projede burayı Mailchimp API key'inle doldur
-    const MAILCHIMP_API_KEY = process.env.MAILCHIMP_API_KEY;
-    const MAILCHIMP_LIST_ID = process.env.MAILCHIMP_LIST_ID;
-    const MAILCHIMP_DC = MAILCHIMP_API_KEY?.split("-").pop(); // datacenter
+    await trackMetricEvent({
+      type: "NEWSLETTER_SIGNUP",
+      path: req.nextUrl.pathname,
+      referrer: req.headers.get("referer"),
+      userAgent: context.userAgent,
+      metadata: { emailDomain: normalizedEmail.split("@")[1] || null },
+    });
 
-    if (!MAILCHIMP_API_KEY || !MAILCHIMP_LIST_ID) {
-      // Development mode: sadece log'la
-      console.log(`[Newsletter] New subscriber: ${email}`);
-      return NextResponse.json({ success: true, message: "Subscribed (dev mode)" });
+    const result = await subscribeToNewsletter({
+      email: normalizedEmail,
+      sourcePath: req.nextUrl.pathname,
+      locale: req.headers.get("x-locale") || null,
+    });
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
-    const response = await fetch(
-      `https://${MAILCHIMP_DC}.api.mailchimp.com/3.0/lists/${MAILCHIMP_LIST_ID}/members`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `apikey ${MAILCHIMP_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email_address: email,
-          status: "pending", // Double opt-in
-        }),
-      }
-    );
-
-    if (response.status === 400) {
-      const data = await response.json();
-      if (data.title === "Member Exists") {
-        return NextResponse.json({ error: "Already subscribed" }, { status: 400 });
-      }
-    }
-
-    if (!response.ok) {
-      throw new Error("Mailchimp API error");
-    }
-
-    return NextResponse.json({ success: true, message: "Check your email to confirm" });
+    return NextResponse.json({
+      success: true,
+      alreadySubscribed: !result.created,
+      message: result.created
+        ? "Subscribed successfully. New publications will be emailed to you."
+        : "You are already subscribed.",
+    });
   } catch (err) {
-    console.error("[Newsletter Error]", err);
+    console.error("[newsletter] error", err);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

@@ -1,21 +1,29 @@
 import { prisma } from "@/lib/prisma";
 import BrandsClient from "./BrandsClient";
 import type { Metadata } from "next";
+import { getDictionary, getLocale } from "@/lib/i18n";
+import { getLocaleAlternates } from "@/lib/i18n/metadata";
+import { absoluteUrl } from "@/lib/seo";
 
 export const revalidate = 60;
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-export const metadata: Metadata = {
-  title: "Watch Brands",
-  description: "Explore the world's finest watchmakers",
-  alternates: { canonical: "/brands" },
-  openGraph: {
-    title: "Watch Brands | Chronos",
-    description: "Explore the world's finest watchmakers",
-    url: `${siteUrl}/brands`,
-    type: "website",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const dictionary = await getDictionary(locale);
+  const alternates = getLocaleAlternates("/brands", locale);
+
+  return {
+    title: dictionary.meta.brandsTitle,
+    description: dictionary.meta.brandsDescription,
+    alternates,
+    openGraph: {
+      title: `${dictionary.meta.brandsTitle} | Chronos`,
+      description: dictionary.meta.brandsDescription,
+      url: absoluteUrl(alternates.canonical),
+      type: "website",
+    },
+  };
+}
 
 const fallbackImg = "https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=400&q=80";
 
@@ -25,14 +33,14 @@ export default async function BrandsPage() {
     include: { _count: { select: { posts: true, reviews: true } } },
   });
 
-  const brands = rawBrands.map(b => ({
-    name: b.name,
-    country: b.country,
-    segment: b.priceSegment.replace("_", "-"),
-    founded: b.founded || 0,
-    articles: b._count.posts + b._count.reviews,
-    img: b.heroImage || b.logo || fallbackImg,
-    slug: b.slug,
+  const brands = rawBrands.map((brand) => ({
+    name: brand.name,
+    country: brand.country,
+    segment: brand.priceSegment.replace("_", "-"),
+    founded: brand.founded || 0,
+    articles: brand._count.posts + brand._count.reviews,
+    img: brand.heroImage || brand.logo || fallbackImg,
+    slug: brand.slug,
   }));
 
   return <BrandsClient brands={brands} />;

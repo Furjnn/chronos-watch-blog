@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 interface Article {
   id: string;
@@ -17,24 +18,29 @@ interface Article {
 }
 
 const catColor: Record<string, string> = {
-  Review: "#2D6A4F", Guide: "#7B2D8B", Heritage: "#B8956A",
-  Technical: "#2563EB", Vintage: "#9A3412", Interview: "#0F766E",
+  Review: "#2D6A4F",
+  Guide: "#7B2D8B",
+  Heritage: "#B8956A",
+  Technical: "#2563EB",
+  Vintage: "#9A3412",
+  Interview: "#0F766E",
 };
 
 export function LatestArticles({ posts }: { posts: Article[] }) {
+  const { t, localizePath } = useI18n();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   return (
     <section className="py-16 md:py-[72px] bg-[var(--bg)]">
       <div className="max-w-[1200px] mx-auto px-6 md:px-10">
-        <h2 className="text-[34px] font-medium text-[var(--charcoal)] mb-1.5" style={{ fontFamily: "var(--font-display)" }}>Latest Articles</h2>
-        <p className="text-sm text-[var(--text-light)] mb-9">In-depth reviews, stories, and insights from the world of horology</p>
+        <h2 className="text-[34px] font-medium text-[var(--charcoal)] mb-1.5" style={{ fontFamily: "var(--font-display)" }}>{t("home.latest.title", "Latest Articles")}</h2>
+        <p className="text-sm text-[var(--text-light)] mb-9">{t("home.latest.subtitle", "In-depth reviews, stories, and insights from the world of horology")}</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
           {posts.map((post) => (
             <Link
               key={post.id}
-              href={`/blog/${post.slug}`}
+              href={localizePath(`/blog/${post.slug}`)}
               className="no-underline transition-transform duration-300"
               style={{ transform: hoveredId === post.id ? "translateY(-4px)" : "none" }}
               onMouseEnter={() => setHoveredId(post.id)}
@@ -73,8 +79,8 @@ export function LatestArticles({ posts }: { posts: Article[] }) {
         </div>
 
         <div className="text-center mt-12">
-          <Link href="/blog" className="inline-block px-11 py-3.5 text-[11.5px] font-semibold tracking-[2px] uppercase bg-transparent border border-[var(--charcoal)] text-[var(--charcoal)] no-underline hover:bg-[var(--charcoal)] hover:text-white transition-all">
-            View All Articles
+          <Link href={localizePath("/blog")} className="inline-block px-11 py-3.5 text-[11.5px] font-semibold tracking-[2px] uppercase bg-transparent border border-[var(--charcoal)] text-[var(--charcoal)] no-underline hover:bg-[var(--charcoal)] hover:text-white transition-all">
+            {t("home.latest.viewAll", "View All Articles")}
           </Link>
         </div>
       </div>

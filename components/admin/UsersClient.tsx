@@ -10,6 +10,7 @@ interface UserRow {
   name: string;
   email: string;
   role: Role;
+  twoFactorEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,16 +28,41 @@ export default function UsersClient({ users, currentUserId }: { users: UserRow[]
   const [editingId, setEditingId] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
 
-  const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "EDITOR" as Role });
-  const [editUser, setEditUser] = useState({ name: "", email: "", role: "EDITOR" as Role, password: "" });
+  const [newUser, setNewUser] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "EDITOR" as Role,
+    twoFactorEnabled: false,
+  });
+  const [editUser, setEditUser] = useState({
+    name: "",
+    email: "",
+    role: "EDITOR" as Role,
+    password: "",
+    twoFactorEnabled: false,
+  });
 
   const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-lg text-[14px] text-slate-800 outline-none focus:border-[#B8956A] focus:ring-2 focus:ring-[#B8956A]/10 transition-all placeholder:text-slate-300";
 
-  const resetNew = () => setNewUser({ name: "", email: "", password: "", role: "EDITOR" });
+  const resetNew = () =>
+    setNewUser({
+      name: "",
+      email: "",
+      password: "",
+      role: "EDITOR",
+      twoFactorEnabled: false,
+    });
 
   const startEdit = (user: UserRow) => {
     setEditingId(user.id);
-    setEditUser({ name: user.name, email: user.email, role: user.role, password: "" });
+    setEditUser({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      password: "",
+      twoFactorEnabled: user.twoFactorEnabled,
+    });
   };
 
   const createUser = async () => {
@@ -66,6 +92,7 @@ export default function UsersClient({ users, currentUserId }: { users: UserRow[]
       name: editUser.name,
       email: editUser.email,
       role: editUser.role,
+      twoFactorEnabled: editUser.twoFactorEnabled,
       password: editUser.password.trim() || undefined,
     };
     const res = await fetch(`/api/admin/users/${editingId}`, {
@@ -130,6 +157,16 @@ export default function UsersClient({ users, currentUserId }: { users: UserRow[]
               </select>
             </div>
             <div className="md:col-span-2">
+              <label className="inline-flex items-center gap-2 text-[13px] text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={newUser.twoFactorEnabled}
+                  onChange={(e) => setNewUser((p) => ({ ...p, twoFactorEnabled: e.target.checked }))}
+                />
+                Enable email-based 2FA
+              </label>
+            </div>
+            <div className="md:col-span-2">
               <button disabled={creating} onClick={createUser} className="px-6 py-2.5 bg-[#B8956A] text-white rounded-lg text-[13px] font-semibold border-none cursor-pointer hover:bg-[#A07D5A] disabled:opacity-60">
                 {creating ? "Creating..." : "Create User"}
               </button>
@@ -140,11 +177,12 @@ export default function UsersClient({ users, currentUserId }: { users: UserRow[]
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-        <table className="w-full min-w-[860px]">
+        <table className="w-full min-w-[920px]">
           <thead>
             <tr className="bg-slate-50/80">
               <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-6 py-3.5">User</th>
               <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-3.5 w-28">Role</th>
+              <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-3.5 w-24">2FA</th>
               <th className="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-4 py-3.5 w-36">Created</th>
               <th className="text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-6 py-3.5 w-44">Actions</th>
             </tr>
@@ -160,6 +198,11 @@ export default function UsersClient({ users, currentUserId }: { users: UserRow[]
                   <div className="text-[12px] text-slate-500">{user.email}</div>
                 </td>
                 <td className="px-4 py-4 text-[12px] text-slate-600 font-semibold">{user.role}</td>
+                <td className="px-4 py-4 text-[12px]">
+                  <span className={`inline-flex px-2 py-0.5 rounded-full font-semibold ${user.twoFactorEnabled ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                    {user.twoFactorEnabled ? "Enabled" : "Off"}
+                  </span>
+                </td>
                 <td className="px-4 py-4 text-[12px] text-slate-500">{formatDate(user.createdAt)}</td>
                 <td className="px-6 py-4">
                   <div className="flex justify-end gap-2">
@@ -199,6 +242,16 @@ export default function UsersClient({ users, currentUserId }: { users: UserRow[]
               <div>
                 <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">New Password (optional)</label>
                 <input type="password" value={editUser.password} onChange={(e) => setEditUser((p) => ({ ...p, password: e.target.value }))} className={inputClass} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="inline-flex items-center gap-2 text-[13px] text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={editUser.twoFactorEnabled}
+                    onChange={(e) => setEditUser((p) => ({ ...p, twoFactorEnabled: e.target.checked }))}
+                  />
+                  Enable email-based 2FA
+                </label>
               </div>
             </div>
             <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">

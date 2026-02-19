@@ -1,3 +1,5 @@
+import type { Locale } from "@/lib/i18n/config";
+
 export interface AboutStat {
   num: string;
   label: string;
@@ -27,7 +29,7 @@ export interface AboutPageContent {
   team: AboutTeamMember[];
 }
 
-export const DEFAULT_ABOUT_PAGE: AboutPageContent = {
+export const DEFAULT_ABOUT_PAGE_EN: AboutPageContent = {
   heroBadge: "Our Story",
   heroTitle: "About Chronos",
   heroSubtitle: "We believe great watchmaking deserves great storytelling.",
@@ -76,12 +78,47 @@ export const DEFAULT_ABOUT_PAGE: AboutPageContent = {
   ],
 };
 
+export const DEFAULT_ABOUT_PAGE_TR: AboutPageContent = {
+  heroBadge: "Hikayemiz",
+  heroTitle: "Chronos Hakkinda",
+  heroSubtitle: "Ust duzey saatcilik, ust duzey hikaye anlatimini hak eder.",
+  missionHeading: "Misyonumuz",
+  missionParagraphOne:
+    "Gecici trendler ve tek kullanimlik teknoloji dunyasinda mekanik saatler kalici bir degeri temsil eder: nesilden nesile aktarilan zanaat ve zamanini asan muhendislik.",
+  missionQuote: "Her saatin bir hikayesi vardir. Bizim isimiz onu guzel anlatmak.",
+  missionParagraphTwo:
+    "Ilk otomatik saatinizi aliyor olun ya da koleksiyonunuza hayalinizdeki modeli ekliyor olun, yol gostermek, bilgilendirmek ve ilham vermek icin buradayiz.",
+  teamBadge: "Ekip",
+  teamHeading: "Editoryal Ekip",
+  contactHeading: "Iletisime Gecin",
+  contactSubtitle: "Sorunuz, haber oneriniz veya is birligi talebiniz mi var?",
+  contactButtonLabel: "Mesaj Gonder",
+  stats: [
+    { num: "500+", label: "Yayimlanan Yazi" },
+    { num: "12.4K", label: "Bulten Abonesi" },
+    { num: "85+", label: "Incelenen Marka" },
+    { num: "4", label: "Yillik Yayin" },
+  ],
+  team: DEFAULT_ABOUT_PAGE_EN.team,
+};
+
+export const DEFAULT_ABOUT_PAGE = DEFAULT_ABOUT_PAGE_EN;
+
+function getDefaultAboutPage(locale: Locale = "en") {
+  return locale === "tr" ? DEFAULT_ABOUT_PAGE_TR : DEFAULT_ABOUT_PAGE_EN;
+}
+
 function asString(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim().length > 0 ? value : fallback;
 }
 
-export function normalizeAboutPage(input: unknown): AboutPageContent {
-  if (!input || typeof input !== "object") return DEFAULT_ABOUT_PAGE;
+export function normalizeAboutPage(input: unknown, locale: Locale = "en"): AboutPageContent {
+  const defaultAboutPage = getDefaultAboutPage(locale);
+
+  if (!input || typeof input !== "object") {
+    return defaultAboutPage;
+  }
+
   const raw = input as Partial<AboutPageContent>;
 
   const stats = Array.isArray(raw.stats)
@@ -113,19 +150,19 @@ export function normalizeAboutPage(input: unknown): AboutPageContent {
     : [];
 
   return {
-    heroBadge: asString(raw.heroBadge, DEFAULT_ABOUT_PAGE.heroBadge),
-    heroTitle: asString(raw.heroTitle, DEFAULT_ABOUT_PAGE.heroTitle),
-    heroSubtitle: asString(raw.heroSubtitle, DEFAULT_ABOUT_PAGE.heroSubtitle),
-    missionHeading: asString(raw.missionHeading, DEFAULT_ABOUT_PAGE.missionHeading),
-    missionParagraphOne: asString(raw.missionParagraphOne, DEFAULT_ABOUT_PAGE.missionParagraphOne),
-    missionQuote: asString(raw.missionQuote, DEFAULT_ABOUT_PAGE.missionQuote),
-    missionParagraphTwo: asString(raw.missionParagraphTwo, DEFAULT_ABOUT_PAGE.missionParagraphTwo),
-    teamBadge: asString(raw.teamBadge, DEFAULT_ABOUT_PAGE.teamBadge),
-    teamHeading: asString(raw.teamHeading, DEFAULT_ABOUT_PAGE.teamHeading),
-    contactHeading: asString(raw.contactHeading, DEFAULT_ABOUT_PAGE.contactHeading),
-    contactSubtitle: asString(raw.contactSubtitle, DEFAULT_ABOUT_PAGE.contactSubtitle),
-    contactButtonLabel: asString(raw.contactButtonLabel, DEFAULT_ABOUT_PAGE.contactButtonLabel),
-    stats: stats.length > 0 ? stats : DEFAULT_ABOUT_PAGE.stats,
-    team: team.length > 0 ? team : DEFAULT_ABOUT_PAGE.team,
+    heroBadge: asString(raw.heroBadge, defaultAboutPage.heroBadge),
+    heroTitle: asString(raw.heroTitle, defaultAboutPage.heroTitle),
+    heroSubtitle: asString(raw.heroSubtitle, defaultAboutPage.heroSubtitle),
+    missionHeading: asString(raw.missionHeading, defaultAboutPage.missionHeading),
+    missionParagraphOne: asString(raw.missionParagraphOne, defaultAboutPage.missionParagraphOne),
+    missionQuote: asString(raw.missionQuote, defaultAboutPage.missionQuote),
+    missionParagraphTwo: asString(raw.missionParagraphTwo, defaultAboutPage.missionParagraphTwo),
+    teamBadge: asString(raw.teamBadge, defaultAboutPage.teamBadge),
+    teamHeading: asString(raw.teamHeading, defaultAboutPage.teamHeading),
+    contactHeading: asString(raw.contactHeading, defaultAboutPage.contactHeading),
+    contactSubtitle: asString(raw.contactSubtitle, defaultAboutPage.contactSubtitle),
+    contactButtonLabel: asString(raw.contactButtonLabel, defaultAboutPage.contactButtonLabel),
+    stats: stats.length > 0 ? stats : defaultAboutPage.stats,
+    team: team.length > 0 ? team : defaultAboutPage.team,
   };
 }

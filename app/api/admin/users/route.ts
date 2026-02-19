@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { Role } from "@prisma/client";
 import { requireAuth, hashPassword } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logAuditEvent } from "@/lib/audit-log";
+import { getRequestContext } from "@/lib/request-context";
 
 const ROLE_OPTIONS = new Set<Role>(["ADMIN", "EDITOR", "AUTHOR"]);
 
@@ -10,7 +12,7 @@ export async function GET() {
     await requireAuth(["ADMIN"]);
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "desc" },
-      select: { id: true, name: true, email: true, role: true, createdAt: true, updatedAt: true },
+      select: { id: true, name: true, email: true, role: true, twoFactorEnabled: true, createdAt: true, updatedAt: true },
     });
     return NextResponse.json({ users });
   } catch (error) {
@@ -24,13 +26,15 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAuth(["ADMIN"]);
+    const session = await requireAuth(["ADMIN"]);
+    const context = getRequestContext(req);
     const data = await req.json();
 
     const name = String(data.name || "").trim();
     const email = String(data.email || "").trim().toLowerCase();
     const password = String(data.password || "");
     const role = String(data.role || "EDITOR") as Role;
+    const twoFactorEnabled = Boolean(data.twoFactorEnabled);
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "Name, email and password are required" }, { status: 400 });
@@ -44,8 +48,18 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
-      data: { name, email, passwordHash, role },
-      select: { id: true, name: true, email: true, role: true, createdAt: true, updatedAt: true },
+      data: { name, email, passwordHash, role, twoFactorEnabled },
+      select: { id: true, name: true, email: true, role: true, twoFactorEnabled: true, createdAt: true, updatedAt: true },
+    });
+    await logAuditEvent({
+      action: "admin_user.created",
+      entityType: "user",
+      entityId: user.id,
+      summary: `Created admin user: ${user.email}`,
+      actor: { userId: session.id },
+      details: { role: user.role, twoFactorEnabled: user.twoFactorEnabled },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
     });
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {

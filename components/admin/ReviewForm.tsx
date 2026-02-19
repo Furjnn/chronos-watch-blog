@@ -27,6 +27,7 @@ interface ReviewValue {
   specs: unknown;
   prosAndCons: unknown;
   gallery: unknown;
+  scheduledAt: string | Date | null;
   author?: { id: string } | null;
   brand?: { id: string } | null;
 }
@@ -51,6 +52,7 @@ interface ReviewFormState {
   priceMax: string;
   seoTitle: string;
   seoDesc: string;
+  scheduledAt: string;
 }
 
 const SPEC_FIELDS = [
@@ -81,6 +83,10 @@ export default function ReviewForm({ review, authors, brands }: Props) {
     brandId: review?.brandId || review?.brand?.id || brands[0]?.id || "",
     priceMin: review?.priceMin?.toString() || "", priceMax: review?.priceMax?.toString() || "",
     seoTitle: review?.seoTitle || "", seoDesc: review?.seoDesc || "",
+    scheduledAt:
+      review?.scheduledAt && !Number.isNaN(new Date(review.scheduledAt).getTime())
+        ? new Date(review.scheduledAt).toISOString().slice(0, 16)
+        : "",
   });
 
   const [specs, setSpecs] = useState<Record<string, string>>((review?.specs as Record<string, string>) || {});
@@ -91,13 +97,16 @@ export default function ReviewForm({ review, authors, brands }: Props) {
   const u = <K extends keyof ReviewFormState>(k: K, v: ReviewFormState[K]) => setForm(p => ({ ...p, [k]: v }));
   const autoSlug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-  const handleSubmit = async (status?: string) => {
+  const handleSubmit = async (status?: string, forceSchedule = false) => {
     if (!form.title.trim() || !form.brandId) { alert("Title and brand are required"); return; }
+    if (forceSchedule && !form.scheduledAt) { alert("Select a schedule date and time first."); return; }
     setSaving(true);
     const payload = {
-      ...form, status: status || form.status,
+      ...form,
+      status: forceSchedule ? "DRAFT" : (status || form.status),
       priceMin: form.priceMin ? parseInt(form.priceMin) : null,
       priceMax: form.priceMax ? parseInt(form.priceMax) : null,
+      scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : null,
       specs, prosAndCons: { pros: pros.filter(p => p.trim()), cons: cons.filter(c => c.trim()) },
       gallery: gallery.filter(g => g.trim()),
     };
@@ -141,6 +150,7 @@ export default function ReviewForm({ review, authors, brands }: Props) {
         </div>
         <div className="flex items-center gap-3">
           <button onClick={() => handleSubmit("DRAFT")} disabled={saving} className="px-5 py-2.5 bg-white border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 cursor-pointer hover:bg-slate-50 disabled:opacity-50 transition-colors">Save Draft</button>
+          <button onClick={() => handleSubmit("DRAFT", true)} disabled={saving} className="px-5 py-2.5 bg-white border border-slate-200 rounded-lg text-[13px] font-medium text-slate-600 cursor-pointer hover:bg-slate-50 disabled:opacity-50 transition-colors">Schedule</button>
           <button onClick={() => handleSubmit("PUBLISHED")} disabled={saving} className="px-5 py-2.5 bg-[#B8956A] border-none rounded-lg text-[13px] font-semibold text-white cursor-pointer hover:bg-[#A07D5A] disabled:opacity-50 transition-colors shadow-sm">{saving ? "Saving..." : "Publish"}</button>
         </div>
       </div>
@@ -188,6 +198,15 @@ export default function ReviewForm({ review, authors, brands }: Props) {
                   <select value={form.brandId} onChange={e => u("brandId", e.target.value)} className="w-full px-4 py-3 border border-slate-200 rounded-lg text-[14px] outline-none bg-white cursor-pointer focus:border-[#B8956A]">{brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
                 <div><label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">Author</label>
                   <select value={form.authorId} onChange={e => u("authorId", e.target.value)} className="w-full px-4 py-3 border border-slate-200 rounded-lg text-[14px] outline-none bg-white cursor-pointer focus:border-[#B8956A]">{authors.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
+                <div>
+                  <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">Schedule Publish At</label>
+                  <input
+                    type="datetime-local"
+                    value={form.scheduledAt}
+                    onChange={e => u("scheduledAt", e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-lg text-[14px] outline-none bg-white focus:border-[#B8956A]"
+                  />
+                </div>
               </div>
             </div>
           </div>

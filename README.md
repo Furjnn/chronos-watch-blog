@@ -50,3 +50,57 @@ Open `http://localhost:3000`. Admin login is `http://localhost:3000/admin/login`
 - `next-sitemap` runs on `postbuild`
 - Canonical + OpenGraph metadata on key pages
 - JSON-LD structured data on article and review detail pages
+
+## Mail Delivery
+
+- Admin panel mail settings are managed at `Admin > Settings > Mail`.
+- API keys are encrypted before storing in DB (`siteSettings.socials.mail`).
+- Supported providers: `Resend API` and `Gmail SMTP (App Password)`.
+- Transactional emails (admin 2FA, moderation notifications) use DB settings first.
+- Fallback environment variables are supported:
+  - `RESEND_API_KEY`
+  - `NOTIFICATION_FROM_EMAIL`
+  - `NOTIFICATION_REPLY_TO`
+  - `GMAIL_SMTP_USER`
+  - `GMAIL_SMTP_PASS`
+
+## Newsletter
+
+- Public newsletter form posts to `/api/subscribe`.
+- Subscribers are stored locally and deduplicated by email.
+- When a post/review transitions to `PUBLISHED`, a newsletter email is automatically sent to subscribers.
+- Scheduler-triggered publications also trigger newsletter delivery.
+
+## Ads (Google AdSense)
+
+- Set AdSense variables in `.env`:
+  - `NEXT_PUBLIC_ADSENSE_ENABLED=true`
+  - `NEXT_PUBLIC_ADSENSE_CLIENT_ID=ca-pub-...`
+  - Optional (for explicit `ads.txt` publisher id): `ADSENSE_PUBLISHER_ID=pub-...`
+  - Slot ids:
+    - `NEXT_PUBLIC_ADSENSE_SLOT_HOME_TOP`
+    - `NEXT_PUBLIC_ADSENSE_SLOT_BLOG_LIST_INLINE`
+    - `NEXT_PUBLIC_ADSENSE_SLOT_BLOG_POST_INLINE`
+    - `NEXT_PUBLIC_ADSENSE_SLOT_REVIEWS_LIST_INLINE`
+    - `NEXT_PUBLIC_ADSENSE_SLOT_REVIEW_DETAIL_INLINE`
+- AdSense script is loaded on public pages (not admin/account/submit).
+- Ads are rendered in dedicated slot components with responsive format.
+- `ads.txt` is served at `/ads.txt` automatically from env.
+
+## Auth Recovery
+
+- Member password reset:
+  - Request link: `/account/forgot-password`
+  - Reset page: `/account/reset-password?token=...`
+- Admin password reset:
+  - Request link: `/admin/login/forgot-password`
+  - Reset page: `/admin/login/reset-password?token=...`
+- Admin 2FA recovery codes:
+  - Manage from `Admin > Security` (`My 2FA Recovery Codes` panel)
+  - Login page supports using a recovery code instead of email verification.
+
+## Scheduler Cron
+
+- Cron endpoint: `GET /api/cron/scheduler`
+- Protected by `CRON_SECRET` in production (`Authorization: Bearer <CRON_SECRET>`).
+- `vercel.json` includes a 5-minute cron schedule for Vercel.

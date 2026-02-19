@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 interface Category {
   name: string;
@@ -9,12 +10,13 @@ interface Category {
 }
 
 export function Categories({ categories }: { categories: Category[] }) {
+  const { t } = useI18n();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   return (
     <section className="py-16 md:py-[72px] bg-[var(--bg-off)]">
       <div className="max-w-[1200px] mx-auto px-6 md:px-10 text-center">
-        <h2 className="text-[34px] font-medium text-[var(--charcoal)] mb-2" style={{ fontFamily: "var(--font-display)" }}>Explore by Category</h2>
+        <h2 className="text-[34px] font-medium text-[var(--charcoal)] mb-2" style={{ fontFamily: "var(--font-display)" }}>{t("home.categories.title", "Explore by Category")}</h2>
         <div className="w-10 h-0.5 bg-[var(--gold)] mx-auto mb-10" />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -38,7 +40,7 @@ export function Categories({ categories }: { categories: Category[] }) {
                 {cat.name}
               </div>
               <div className="text-[12px] transition-colors" style={{ color: hoveredIdx === i ? "rgba(255,255,255,0.5)" : "var(--text-light)" }}>
-                {cat.count} articles
+                {cat.count} {t("home.categories.articlesSuffix", "articles")}
               </div>
             </div>
           ))}

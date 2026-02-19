@@ -23,6 +23,18 @@ enum PostStatus {
   ARCHIVED
 }
 
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MemberStatus {
+  ACTIVE
+  BANNED
+  TIMEOUT
+}
+
 enum PriceSegment {
   ENTRY
   MID_RANGE
@@ -30,33 +42,132 @@ enum PriceSegment {
   ULTRA_LUXURY
 }
 
+enum CommentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SPAM
+}
+
+enum NotificationChannel {
+  EMAIL
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum SecurityEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGIN_RATE_LIMITED
+  MFA_CHALLENGE
+  MFA_SUCCESS
+  MFA_FAILED
+  MEMBER_LOGIN_SUCCESS
+  MEMBER_LOGIN_FAILED
+  MEMBER_LOGIN_RATE_LIMITED
+  MEMBER_BLOCKED
+}
+
+enum MetricEventType {
+  PAGE_VIEW
+  SEARCH_QUERY
+  NEWSLETTER_SIGNUP
+  MEMBER_REGISTER
+  MEMBER_LOGIN
+  MEMBER_POST_SUBMITTED
+  MEMBER_POST_APPROVED
+  COMMENT_SUBMITTED
+  COMMENT_APPROVED
+}
+
+enum SearchDocumentType {
+  POST
+  REVIEW
+  BRAND
+}
+
+enum TwoFactorMethod {
+  EMAIL
+  TOTP
+}
+
 // ─── User ───
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  name          String
-  passwordHash  String
-  role          Role     @default(EDITOR)
-  avatar        String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String          @id @default(cuid())
+  email               String          @unique
+  name                String
+  passwordHash        String
+  role                Role            @default(EDITOR)
+  avatar              String?
+  twoFactorEnabled    Boolean         @default(false)
+  twoFactorMethod     TwoFactorMethod @default(EMAIL)
+  twoFactorSecret     String?
+  failedLoginAttempts Int             @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  scheduledPosts           Post[]                @relation("ScheduledPostBy")
+  scheduledReviews         Review[]              @relation("ScheduledReviewBy")
+  postRevisions            PostRevision[]        @relation("PostRevisionByUser")
+  reviewRevisions          ReviewRevision[]      @relation("ReviewRevisionByUser")
+  auditLogs                AuditLog[]            @relation("AuditLogActorUser")
+  moderatedComments        Comment[]             @relation("CommentModeratedByUser")
+  commentModerationActions CommentModeration[]
+  receivedNotifications    NotificationLog[]     @relation("NotificationRecipientUser")
+  securityEvents           SecurityEvent[]       @relation("SecurityEventUser")
+  loginChallenges          AdminLoginChallenge[]
+}
+
+model Member {
+  id                    String            @id @default(cuid())
+  email                 String            @unique
+  name                  String
+  passwordHash          String
+  avatar                String?
+  status                MemberStatus      @default(ACTIVE)
+  timeoutUntil          DateTime?
+  moderationReason      String?           @db.Text
+  moderatedAt           DateTime?
+  failedLoginAttempts   Int               @default(0)
+  lockedUntil           DateTime?
+  lastLoginAt           DateTime?
+  posts                 Post[]            @relation("MemberSubmittedPosts")
+  comments              Comment[]         @relation("CommentMember")
+  postRevisions         PostRevision[]    @relation("PostRevisionByMember")
+  reviewRevisions       ReviewRevision[]  @relation("ReviewRevisionByMember")
+  auditLogs             AuditLog[]        @relation("AuditLogActorMember")
+  receivedNotifications NotificationLog[] @relation("NotificationRecipientMember")
+  securityEvents        SecurityEvent[]   @relation("SecurityEventMember")
+  metricEvents          MetricEvent[]     @relation("MetricEventMember")
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@index([status, createdAt])
 }
 
 // ─── Author ───
 
 model Author {
-  id         String   @id @default(cuid())
-  name       String
-  slug       String   @unique
-  bio        String?  @db.Text
-  avatar     String?
-  role       String?
-  socials    Json?    // { twitter, instagram, website }
-  posts      Post[]
-  reviews    Review[]
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  bio       String?  @db.Text
+  avatar    String?
+  role      String?
+  socials   Json? // { twitter, instagram, website }
+  posts     Post[]
+  reviews   Review[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ─── Category ───
@@ -84,52 +195,67 @@ model Tag {
 // ─── Brand ───
 
 model Brand {
-  id           String        @id @default(cuid())
-  name         String        @unique
-  slug         String        @unique
+  id           String       @id @default(cuid())
+  name         String       @unique
+  slug         String       @unique
   country      String
   founded      Int?
-  priceSegment PriceSegment  @default(LUXURY)
-  description  String?       @db.Text
+  priceSegment PriceSegment @default(LUXURY)
+  description  String?      @db.Text
   logo         String?
   heroImage    String?
   website      String?
   posts        Post[]
   reviews      Review[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 }
 
 // ─── Post ───
 
 model Post {
-  id          String     @id @default(cuid())
-  title       String
-  slug        String     @unique
-  excerpt     String?    @db.Text
-  body        Json?      // Tiptap JSON content
-  coverImage  String?
-  status      PostStatus @default(DRAFT)
-  featured    Boolean    @default(false)
-  readingTime Int?
-  publishedAt DateTime?
-  seoTitle    String?
-  seoDesc     String?    @db.Text
-  ogImage     String?
+  id             String           @id @default(cuid())
+  title          String
+  slug           String           @unique
+  excerpt        String?          @db.Text
+  body           Json? // Tiptap JSON content
+  coverImage     String?
+  status         PostStatus       @default(DRAFT)
+  featured       Boolean          @default(false)
+  readingTime    Int?
+  publishedAt    DateTime?
+  seoTitle       String?
+  seoDesc        String?          @db.Text
+  ogImage        String?
+  approvalStatus SubmissionStatus @default(APPROVED)
+  reviewNote     String?          @db.Text
+  reviewedAt     DateTime?
 
-  author      Author     @relation(fields: [authorId], references: [id])
-  authorId    String
-  brand       Brand?     @relation(fields: [brandId], references: [id])
-  brandId     String?
-  categories  Category[] @relation("PostCategories")
-  tags        Tag[]      @relation("PostTags")
+  author              Author            @relation(fields: [authorId], references: [id])
+  authorId            String
+  submittedByMember   Member?           @relation("MemberSubmittedPosts", fields: [submittedByMemberId], references: [id], onDelete: SetNull)
+  submittedByMemberId String?
+  scheduledAt         DateTime?
+  scheduledBy         User?             @relation("ScheduledPostBy", fields: [scheduledById], references: [id], onDelete: SetNull)
+  scheduledById       String?
+  brand               Brand?            @relation(fields: [brandId], references: [id])
+  brandId             String?
+  categories          Category[]        @relation("PostCategories")
+  tags                Tag[]             @relation("PostTags")
+  revisions           PostRevision[]
+  comments            Comment[]         @relation("PostComments")
+  notifications       NotificationLog[] @relation("NotificationPost")
+  metricEvents        MetricEvent[]     @relation("MetricEventPost")
 
-  views       Int        @default(0)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  views     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status, publishedAt])
+  @@index([scheduledAt, status])
   @@index([featured])
+  @@index([approvalStatus, createdAt])
+  @@index([submittedByMemberId, createdAt])
 }
 
 // ─── Review ───
@@ -141,10 +267,10 @@ model Review {
   watchRef    String
   rating      Float
   verdict     String?    @db.Text
-  body        Json?      // Tiptap JSON content
-  specs       Json?      // { caseSize, movement, waterResistance... }
-  prosAndCons Json?      // { pros: [], cons: [] }
-  gallery     Json?      // ["url1", "url2", ...]
+  body        Json? // Tiptap JSON content
+  specs       Json? // { caseSize, movement, waterResistance... }
+  prosAndCons Json? // { pros: [], cons: [] }
+  gallery     Json? // ["url1", "url2", ...]
   priceMin    Int?
   priceMax    Int?
   currency    String     @default("USD")
@@ -154,16 +280,24 @@ model Review {
   seoDesc     String?    @db.Text
   ogImage     String?
 
-  author      Author     @relation(fields: [authorId], references: [id])
-  authorId    String
-  brand       Brand      @relation(fields: [brandId], references: [id])
-  brandId     String
+  author        Author            @relation(fields: [authorId], references: [id])
+  authorId      String
+  scheduledAt   DateTime?
+  scheduledBy   User?             @relation("ScheduledReviewBy", fields: [scheduledById], references: [id], onDelete: SetNull)
+  scheduledById String?
+  brand         Brand             @relation(fields: [brandId], references: [id])
+  brandId       String
+  revisions     ReviewRevision[]
+  comments      Comment[]         @relation("ReviewComments")
+  notifications NotificationLog[] @relation("NotificationReview")
+  metricEvents  MetricEvent[]     @relation("MetricEventReview")
 
-  views       Int        @default(0)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  views     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status, publishedAt])
+  @@index([scheduledAt, status])
 }
 
 // ─── Media ───
@@ -173,7 +307,7 @@ model Media {
   url       String
   key       String   @unique // S3 key
   filename  String
-  size      Int      // bytes
+  size      Int // bytes
   width     Int?
   height    Int?
   alt       String?
@@ -185,14 +319,220 @@ model Media {
 // ─── Site Settings (Singleton) ───
 
 model SiteSettings {
-  id              String  @id @default("main")
-  siteName        String  @default("Chronos")
-  logo            String?
-  socials         Json?   // { instagram, twitter, youtube, pinterest }
-  seoTitle        String?
-  seoDescription  String? @db.Text
-  ogImage         String?
-  footerText      String?
-  analyticsId     String?
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default("main")
+  siteName       String   @default("Chronos")
+  logo           String?
+  socials        Json? // { instagram, twitter, youtube, pinterest }
+  seoTitle       String?
+  seoDescription String?  @db.Text
+  ogImage        String?
+  footerText     String?
+  analyticsId    String?
+  updatedAt      DateTime @updatedAt
+}
+
+model PostRevision {
+  id                String   @id @default(cuid())
+  post              Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId            String
+  version           Int
+  snapshot          Json
+  reason            String?
+  createdByUser     User?    @relation("PostRevisionByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUserId   String?
+  createdByMember   Member?  @relation("PostRevisionByMember", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  createdByMemberId String?
+  createdAt         DateTime @default(now())
+
+  @@unique([postId, version])
+  @@index([postId, createdAt])
+}
+
+model ReviewRevision {
+  id                String   @id @default(cuid())
+  review            Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reviewId          String
+  version           Int
+  snapshot          Json
+  reason            String?
+  createdByUser     User?    @relation("ReviewRevisionByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUserId   String?
+  createdByMember   Member?  @relation("ReviewRevisionByMember", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  createdByMemberId String?
+  createdAt         DateTime @default(now())
+
+  @@unique([reviewId, version])
+  @@index([reviewId, createdAt])
+}
+
+model Comment {
+  id                String              @id @default(cuid())
+  body              String              @db.Text
+  status            CommentStatus       @default(PENDING)
+  post              Post?               @relation("PostComments", fields: [postId], references: [id], onDelete: Cascade)
+  postId            String?
+  review            Review?             @relation("ReviewComments", fields: [reviewId], references: [id], onDelete: Cascade)
+  reviewId          String?
+  member            Member?             @relation("CommentMember", fields: [memberId], references: [id], onDelete: SetNull)
+  memberId          String?
+  authorName        String?
+  authorEmail       String?
+  ipHash            String?
+  moderationNote    String?             @db.Text
+  moderatedAt       DateTime?
+  moderatedBy       User?               @relation("CommentModeratedByUser", fields: [moderatedByUserId], references: [id], onDelete: SetNull)
+  moderatedByUserId String?
+  moderationEvents  CommentModeration[]
+  notifications     NotificationLog[]   @relation("NotificationComment")
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([status, createdAt])
+  @@index([postId, status])
+  @@index([reviewId, status])
+  @@index([memberId, createdAt])
+}
+
+model CommentModeration {
+  id          String        @id @default(cuid())
+  comment     Comment       @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId   String
+  status      CommentStatus
+  note        String?       @db.Text
+  actor       User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorUserId String?
+  createdAt   DateTime      @default(now())
+
+  @@index([commentId, createdAt])
+  @@index([actorUserId, createdAt])
+}
+
+model NotificationLog {
+  id                String              @id @default(cuid())
+  type              String
+  channel           NotificationChannel @default(EMAIL)
+  status            NotificationStatus  @default(PENDING)
+  recipientEmail    String?
+  recipientUser     User?               @relation("NotificationRecipientUser", fields: [recipientUserId], references: [id], onDelete: SetNull)
+  recipientUserId   String?
+  recipientMember   Member?             @relation("NotificationRecipientMember", fields: [recipientMemberId], references: [id], onDelete: SetNull)
+  recipientMemberId String?
+  subject           String?
+  payload           Json?
+  errorMessage      String?             @db.Text
+  post              Post?               @relation("NotificationPost", fields: [postId], references: [id], onDelete: SetNull)
+  postId            String?
+  review            Review?             @relation("NotificationReview", fields: [reviewId], references: [id], onDelete: SetNull)
+  reviewId          String?
+  comment           Comment?            @relation("NotificationComment", fields: [commentId], references: [id], onDelete: SetNull)
+  commentId         String?
+  sentAt            DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([status, createdAt])
+  @@index([recipientEmail, createdAt])
+  @@index([type, createdAt])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  action        String
+  entityType    String
+  entityId      String?
+  summary       String?
+  details       Json?
+  ipAddress     String?
+  userAgent     String?
+  actorUser     User?    @relation("AuditLogActorUser", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorUserId   String?
+  actorMember   Member?  @relation("AuditLogActorMember", fields: [actorMemberId], references: [id], onDelete: SetNull)
+  actorMemberId String?
+  createdAt     DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([entityType, entityId])
+  @@index([actorUserId, createdAt])
+  @@index([actorMemberId, createdAt])
+}
+
+model SecurityEvent {
+  id        String            @id @default(cuid())
+  type      SecurityEventType
+  success   Boolean           @default(true)
+  message   String?
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+  user      User?             @relation("SecurityEventUser", fields: [userId], references: [id], onDelete: SetNull)
+  userId    String?
+  member    Member?           @relation("SecurityEventMember", fields: [memberId], references: [id], onDelete: SetNull)
+  memberId  String?
+  createdAt DateTime          @default(now())
+
+  @@index([type, createdAt])
+  @@index([userId, createdAt])
+  @@index([memberId, createdAt])
+}
+
+model AdminLoginChallenge {
+  id         String    @id @default(cuid())
+  email      String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  ipAddress  String?
+  userAgent  String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId     String?
+  createdAt  DateTime  @default(now())
+
+  @@index([email, expiresAt])
+  @@index([userId, createdAt])
+}
+
+model SearchDocument {
+  id           String             @id @default(cuid())
+  documentType SearchDocumentType
+  documentId   String
+  locale       String             @default("en")
+  title        String
+  excerpt      String?            @db.Text
+  bodyText     String?            @db.Text
+  tags         String[]           @default([])
+  categories   String[]           @default([])
+  brand        String?
+  isPublished  Boolean            @default(true)
+  scoreBoost   Float              @default(1)
+  publishedAt  DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@unique([documentType, documentId, locale])
+  @@index([locale, isPublished, publishedAt])
+  @@index([documentType, isPublished])
+}
+
+model MetricEvent {
+  id        String          @id @default(cuid())
+  type      MetricEventType
+  sessionId String?
+  path      String?
+  locale    String?
+  referrer  String?
+  userAgent String?
+  country   String?
+  member    Member?         @relation("MetricEventMember", fields: [memberId], references: [id], onDelete: SetNull)
+  memberId  String?
+  post      Post?           @relation("MetricEventPost", fields: [postId], references: [id], onDelete: SetNull)
+  postId    String?
+  review    Review?         @relation("MetricEventReview", fields: [reviewId], references: [id], onDelete: SetNull)
+  reviewId  String?
+  metadata  Json?
+  createdAt DateTime        @default(now())
+
+  @@index([type, createdAt])
+  @@index([path, createdAt])
+  @@index([memberId, createdAt])
 }

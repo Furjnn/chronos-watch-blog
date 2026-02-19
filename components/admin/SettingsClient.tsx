@@ -3,12 +3,29 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { DEFAULT_ABOUT_PAGE, normalizeAboutPage, type AboutPageContent } from "@/lib/about-page";
+import {
+  DEFAULT_HEADER_NAVIGATION,
+  normalizeHeaderNavigation,
+  type HeaderNavigationItem,
+} from "@/lib/navigation";
 
 type SettingsSocials = {
   instagram?: string;
   twitter?: string;
   youtube?: string;
   aboutPage?: unknown;
+  navigation?: unknown;
+  mail?: unknown;
+};
+
+type SettingsMail = {
+  enabled?: boolean;
+  provider?: string;
+  fromEmail?: string;
+  replyTo?: string;
+  hasApiKey?: boolean;
+  smtpUser?: string;
+  hasSmtpPass?: boolean;
 };
 
 type SettingsData = {
@@ -26,10 +43,24 @@ function updateArrayItem<T>(list: T[], index: number, patch: Partial<T>) {
   return list.map((item, i) => (i === index ? { ...item, ...patch } : item));
 }
 
+function createEmptyNavigationItem(index = 0): HeaderNavigationItem {
+  return {
+    id: `nav-${Date.now()}-${index}`,
+    labelEn: "",
+    labelTr: "",
+    href: "/",
+    external: false,
+    enabled: true,
+  };
+}
+
 export default function SettingsClient({ settings }: { settings: SettingsData }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [testSending, setTestSending] = useState(false);
+  const [mailMessage, setMailMessage] = useState("");
+  const [mailError, setMailError] = useState("");
   const [activeTab, setActiveTab] = useState("general");
   const socials =
     typeof settings.socials === "object" && settings.socials !== null
@@ -37,6 +68,11 @@ export default function SettingsClient({ settings }: { settings: SettingsData })
       : undefined;
 
   const initialAbout = normalizeAboutPage(socials?.aboutPage);
+  const initialNavigation = normalizeHeaderNavigation(socials?.navigation);
+  const initialMail =
+    socials?.mail && typeof socials.mail === "object"
+      ? (socials.mail as SettingsMail)
+      : undefined;
 
   const [form, setForm] = useState({
     siteName: settings.siteName || "",
@@ -50,6 +86,19 @@ export default function SettingsClient({ settings }: { settings: SettingsData })
     twitter: socials?.twitter || "",
     youtube: socials?.youtube || "",
     aboutPage: initialAbout,
+    navigation: initialNavigation,
+    mailEnabled: Boolean(initialMail?.enabled),
+    mailProvider: (initialMail?.provider || "resend").toLowerCase() === "gmail" ? "gmail" : "resend",
+    mailFromEmail: initialMail?.fromEmail || "",
+    mailReplyTo: initialMail?.replyTo || "",
+    mailApiKey: "",
+    mailHasApiKey: Boolean(initialMail?.hasApiKey),
+    mailRemoveApiKey: false,
+    mailSmtpUser: initialMail?.smtpUser || "",
+    mailSmtpPass: "",
+    mailHasSmtpPass: Boolean(initialMail?.hasSmtpPass),
+    mailRemoveSmtpPass: false,
+    mailTestRecipient: "",
   });
 
   const u = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
@@ -112,31 +161,121 @@ export default function SettingsClient({ settings }: { settings: SettingsData })
     }));
   };
 
+  const updateNavigationItem = (
+    index: number,
+    patch: Partial<HeaderNavigationItem>,
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      navigation: updateArrayItem(prev.navigation, index, patch),
+    }));
+  };
+
+  const addNavigationItem = () => {
+    setForm((prev) => ({
+      ...prev,
+      navigation: [...prev.navigation, createEmptyNavigationItem(prev.navigation.length + 1)],
+    }));
+  };
+
+  const removeNavigationItem = (index: number) => {
+    setForm((prev) => {
+      const next = prev.navigation.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        navigation: next.length > 0 ? next : DEFAULT_HEADER_NAVIGATION,
+      };
+    });
+  };
+
   const resetAboutToDefault = () => {
     setForm((prev) => ({ ...prev, aboutPage: DEFAULT_ABOUT_PAGE }));
   };
 
   const save = async () => {
     setSaving(true);
+    setMailError("");
+    setMailMessage("");
     try {
-      await fetch("/api/admin/settings", {
+      const response = await fetch("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          mail: {
+            enabled: form.mailEnabled,
+            provider: form.mailProvider,
+            fromEmail: form.mailFromEmail,
+            replyTo: form.mailReplyTo,
+            apiKey: form.mailApiKey || undefined,
+            removeApiKey: form.mailRemoveApiKey,
+            smtpUser: form.mailSmtpUser,
+            smtpPass: form.mailSmtpPass || undefined,
+            removeSmtpPass: form.mailRemoveSmtpPass,
+          },
           socials: {
             instagram: form.instagram,
             twitter: form.twitter,
             youtube: form.youtube,
             aboutPage: form.aboutPage,
+            navigation: form.navigation,
           },
         }),
       });
+      const data = await response.json();
+      if (!response.ok) {
+        setMailError(data.error || "Unable to save settings");
+        return;
+      }
+
+      const mail = data?.socials?.mail as SettingsMail | undefined;
+      setForm((prev) => ({
+        ...prev,
+        mailApiKey: "",
+        mailRemoveApiKey: false,
+        mailHasApiKey: Boolean(mail?.hasApiKey),
+        mailSmtpPass: "",
+        mailRemoveSmtpPass: false,
+        mailHasSmtpPass: Boolean(mail?.hasSmtpPass),
+        mailSmtpUser: mail?.smtpUser || prev.mailSmtpUser,
+        mailProvider: mail?.provider === "gmail" ? "gmail" : "resend",
+      }));
+
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       router.refresh();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const sendTestMail = async () => {
+    const recipient = form.mailTestRecipient.trim();
+    if (!recipient || !recipient.includes("@")) {
+      setMailError("Please enter a valid recipient email address");
+      setMailMessage("");
+      return;
+    }
+
+    setTestSending(true);
+    setMailError("");
+    setMailMessage("");
+
+    try {
+      const response = await fetch("/api/admin/settings/mail/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: recipient }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setMailError(data.error || "Unable to send test email");
+        return;
+      }
+
+      setMailMessage(data.message || "Test email sent");
+    } finally {
+      setTestSending(false);
     }
   };
 
@@ -158,13 +297,15 @@ export default function SettingsClient({ settings }: { settings: SettingsData })
       <div className="flex gap-1 bg-white rounded-xl border border-slate-200 p-1.5 mb-6 w-fit">
         {[
           { id: "general", label: "General" },
-          { id: "seo", label: "SEO" },
-          { id: "social", label: "Social" },
-          { id: "about", label: "About" },
-        ].map((tab) => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`text-[12px] font-medium px-4 py-2 rounded-lg border-none cursor-pointer transition-all ${activeTab === tab.id ? "bg-slate-900 text-white shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700"}`}>
-            {tab.label}
-          </button>
+        { id: "seo", label: "SEO" },
+        { id: "social", label: "Social" },
+        { id: "navigation", label: "Navigation" },
+        { id: "mail", label: "Mail" },
+        { id: "about", label: "About" },
+      ].map((tab) => (
+        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`text-[12px] font-medium px-4 py-2 rounded-lg border-none cursor-pointer transition-all ${activeTab === tab.id ? "bg-slate-900 text-white shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700"}`}>
+          {tab.label}
+        </button>
         ))}
       </div>
 
@@ -221,6 +362,263 @@ export default function SettingsClient({ settings }: { settings: SettingsData })
                 <input value={form[key as keyof typeof form] as string} onChange={(e) => u(key, e.target.value)} placeholder={placeholder} className={inputClass} />
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "navigation" && (
+        <div className="space-y-6 max-w-5xl">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <h2 className="text-[14px] font-semibold text-slate-700">Header Navigation</h2>
+              <button onClick={addNavigationItem} className="text-[12px] font-semibold px-3 py-1.5 rounded border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
+                Add Menu Item
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {form.navigation.map((item, index) => (
+                <div key={item.id} className="border border-slate-200 rounded-lg p-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelClass}>English Label</label>
+                      <input
+                        value={item.labelEn}
+                        onChange={(e) => updateNavigationItem(index, { labelEn: e.target.value })}
+                        placeholder="Latest"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Turkish Label</label>
+                      <input
+                        value={item.labelTr}
+                        onChange={(e) => updateNavigationItem(index, { labelTr: e.target.value })}
+                        placeholder="Son Yazilar"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className={labelClass}>Link URL</label>
+                      <input
+                        value={item.href}
+                        onChange={(e) => updateNavigationItem(index, { href: e.target.value })}
+                        placeholder="/blog or https://example.com"
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-4">
+                    <label className="inline-flex items-center gap-2 text-[13px] text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={item.enabled}
+                        onChange={(e) => updateNavigationItem(index, { enabled: e.target.checked })}
+                        className="w-4 h-4 rounded border-slate-300"
+                      />
+                      Enabled
+                    </label>
+                    <label className="inline-flex items-center gap-2 text-[13px] text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={item.external}
+                        onChange={(e) => updateNavigationItem(index, { external: e.target.checked })}
+                        className="w-4 h-4 rounded border-slate-300"
+                      />
+                      External Link (new tab)
+                    </label>
+                    <button
+                      onClick={() => removeNavigationItem(index)}
+                      className="ml-auto px-3 py-1.5 rounded border border-red-200 text-red-600 bg-red-50 cursor-pointer hover:bg-red-100"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "mail" && (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm max-w-3xl">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+            <h2 className="text-[14px] font-semibold text-slate-700">Mail Delivery</h2>
+          </div>
+          <div className="p-6 space-y-5">
+            <div className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
+              <div>
+                <p className="text-[13px] font-semibold text-slate-800">Enable transactional email</p>
+                <p className="text-[12px] text-slate-500 mt-1">
+                  Used for 2FA codes and system notifications.
+                </p>
+              </div>
+              <label className="inline-flex items-center gap-2 text-[13px] text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={form.mailEnabled}
+                  onChange={(e) => setForm((prev) => ({ ...prev, mailEnabled: e.target.checked }))}
+                  className="w-4 h-4 rounded border-slate-300"
+                />
+                Enabled
+              </label>
+            </div>
+
+            <div>
+              <label className={labelClass}>Provider</label>
+              <select
+                value={form.mailProvider}
+                onChange={(e) => setForm((prev) => ({ ...prev, mailProvider: e.target.value }))}
+                className={inputClass}
+              >
+                <option value="resend">Resend</option>
+                <option value="gmail">Gmail SMTP</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>From Email</label>
+              <input
+                value={form.mailFromEmail}
+                onChange={(e) => setForm((prev) => ({ ...prev, mailFromEmail: e.target.value }))}
+                placeholder="Chronos <noreply@yourdomain.com> or noreply@yourdomain.com"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Reply-To Email (optional)</label>
+              <input
+                value={form.mailReplyTo}
+                onChange={(e) => setForm((prev) => ({ ...prev, mailReplyTo: e.target.value }))}
+                placeholder="support@yourdomain.com"
+                className={inputClass}
+              />
+            </div>
+
+            {form.mailProvider === "resend" && (
+              <div>
+                <label className={labelClass}>Resend API Key</label>
+                <input
+                  type="password"
+                  value={form.mailApiKey}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      mailApiKey: e.target.value,
+                      mailRemoveApiKey: false,
+                    }))
+                  }
+                  placeholder={form.mailHasApiKey ? "Stored key exists. Enter new key to replace it." : "re_xxxxxxxxx"}
+                  className={inputClass}
+                  autoComplete="new-password"
+                />
+                {form.mailHasApiKey && (
+                  <label className="inline-flex items-center gap-2 text-[12px] text-slate-600 mt-3">
+                    <input
+                      type="checkbox"
+                      checked={form.mailRemoveApiKey}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          mailRemoveApiKey: e.target.checked,
+                          mailApiKey: e.target.checked ? "" : prev.mailApiKey,
+                        }))
+                      }
+                      className="w-4 h-4 rounded border-slate-300"
+                    />
+                    Remove currently stored API key on save
+                  </label>
+                )}
+              </div>
+            )}
+
+            {form.mailProvider === "gmail" && (
+              <div className="space-y-4">
+                <div>
+                  <label className={labelClass}>Gmail Address (SMTP User)</label>
+                  <input
+                    type="email"
+                    value={form.mailSmtpUser}
+                    onChange={(e) => setForm((prev) => ({ ...prev, mailSmtpUser: e.target.value }))}
+                    placeholder="youraccount@gmail.com"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Gmail App Password</label>
+                  <input
+                    type="password"
+                    value={form.mailSmtpPass}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        mailSmtpPass: e.target.value,
+                        mailRemoveSmtpPass: false,
+                      }))
+                    }
+                    placeholder={form.mailHasSmtpPass ? "Stored password exists. Enter new one to replace it." : "16-character app password"}
+                    className={inputClass}
+                    autoComplete="new-password"
+                  />
+                  <p className="text-[12px] text-slate-500 mt-2">
+                    Use Google 2-Step Verification and create an App Password.
+                  </p>
+                  {form.mailHasSmtpPass && (
+                    <label className="inline-flex items-center gap-2 text-[12px] text-slate-600 mt-3">
+                      <input
+                        type="checkbox"
+                        checked={form.mailRemoveSmtpPass}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            mailRemoveSmtpPass: e.target.checked,
+                            mailSmtpPass: e.target.checked ? "" : prev.mailSmtpPass,
+                          }))
+                        }
+                        className="w-4 h-4 rounded border-slate-300"
+                      />
+                      Remove currently stored Gmail app password on save
+                    </label>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-lg border border-slate-200 p-4">
+              <p className="text-[13px] font-semibold text-slate-800">Send Test Email</p>
+              <p className="text-[12px] text-slate-500 mt-1 mb-3">
+                Save settings first if you changed provider or credentials.
+              </p>
+              <div className="flex flex-col gap-3 md:flex-row">
+                <input
+                  type="email"
+                  value={form.mailTestRecipient}
+                  onChange={(e) => setForm((prev) => ({ ...prev, mailTestRecipient: e.target.value }))}
+                  placeholder="recipient@example.com"
+                  className={inputClass}
+                />
+                <button
+                  onClick={sendTestMail}
+                  disabled={testSending}
+                  className="px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-[13px] font-semibold text-slate-700 cursor-pointer hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {testSending ? "Sending..." : "Send Test"}
+                </button>
+              </div>
+            </div>
+
+            {mailError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+                {mailError}
+              </div>
+            )}
+            {mailMessage && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-700">
+                {mailMessage}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 interface Slide {
   id: string;
@@ -13,6 +14,7 @@ interface Slide {
 }
 
 export function HeroSlider({ slides }: { slides: Slide[] }) {
+  const { t, localizePath } = useI18n();
   const [current, setCurrent] = useState(0);
   const [progress, setProgress] = useState(0);
   const DURATION = 6000;
@@ -65,10 +67,10 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
           </p>
 
           <Link
-            href={`/blog/${slide.slug}`}
+            href={localizePath(`/blog/${slide.slug}`)}
             className="inline-block px-10 py-3.5 bg-white text-[var(--charcoal)] text-[11px] font-semibold tracking-[2.5px] uppercase no-underline hover:bg-[var(--gold)] hover:text-white transition-all"
           >
-            READ MORE
+            {t("home.heroReadMore", "READ MORE")}
           </Link>
         </div>
 

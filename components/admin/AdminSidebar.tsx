@@ -14,6 +14,10 @@ const NAV_SECTIONS = [
     label: "Content",
     items: [
       { name: "Posts", href: "/admin/posts", icon: "M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" },
+      { name: "Scheduler", href: "/admin/scheduler", icon: "M12 8v4l3 3m6-3a9 9 0 11-3.51-7.13" },
+      { name: "Submissions", href: "/admin/submissions", icon: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h4m10 0h-6m6 0v6m0-6L10 14" },
+      { name: "Comments", href: "/admin/comments", icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" },
+      { name: "Revisions", href: "/admin/revisions", icon: "M12 8v4l3 3m6-3a9 9 0 11-3.51-7.13" },
       { name: "Reviews", href: "/admin/reviews", icon: "M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" },
       { name: "Brands", href: "/admin/brands", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
     ],
@@ -35,7 +39,10 @@ const NAV_SECTIONS = [
   {
     label: "System",
     items: [
+      { name: "Members", href: "/admin/members", icon: "M17 20h5v-1a4 4 0 00-5.3-3.8M9 20H4v-1a4 4 0 015.3-3.8M16 6a3 3 0 11-6 0 3 3 0 016 0zM8 6a3 3 0 11-6 0 3 3 0 016 0zM16 14a4 4 0 00-8 0v1h8v-1z" },
       { name: "Users", href: "/admin/users", icon: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8zm11 14v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" },
+      { name: "Security", href: "/admin/security", icon: "M12 2l7 4v5c0 5-3.5 9.74-7 11-3.5-1.26-7-6-7-11V6l7-4z" },
+      { name: "Audit Log", href: "/admin/audit", icon: "M9 17v-2m3 2v-4m3 4V7m5 11H4a2 2 0 01-2-2V4a2 2 0 012-2h5.586a1 1 0 01.707.293l1.414 1.414A1 1 0 0012.414 4H20a2 2 0 012 2v10a2 2 0 01-2 2z" },
       { name: "Settings", href: "/admin/settings", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
     ],
   },
@@ -53,7 +60,10 @@ export default function AdminSidebar({ userRole }: { userRole: string }) {
   const pathname = usePathname();
   const sections = NAV_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter((item) => item.name !== "Users" || userRole === "ADMIN"),
+    items: section.items.filter((item) => {
+      if ((item.name === "Users" || item.name === "Members" || item.name === "Security") && userRole !== "ADMIN") return false;
+      return true;
+    }),
   })).filter((section) => section.items.length > 0);
 
   return (

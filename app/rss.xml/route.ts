@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+import { absoluteUrl, siteUrl } from "@/lib/seo";
+import { DEFAULT_LOCALE } from "@/lib/i18n/config";
+import { localizePathname } from "@/lib/i18n/routing";
 
 function xmlEscape(value: string) {
   return value
@@ -30,13 +31,13 @@ export async function GET() {
   const items = [
     ...posts.map((post) => ({
       title: post.title,
-      link: `${siteUrl}/blog/${post.slug}`,
+      link: absoluteUrl(localizePathname(`/blog/${post.slug}`, DEFAULT_LOCALE)),
       description: post.excerpt || "",
       pubDate: post.publishedAt || post.updatedAt,
     })),
     ...reviews.map((review) => ({
       title: `${review.title} Review`,
-      link: `${siteUrl}/reviews/${review.slug}`,
+      link: absoluteUrl(localizePathname(`/reviews/${review.slug}`, DEFAULT_LOCALE)),
       description: review.verdict || "",
       pubDate: review.publishedAt || review.updatedAt,
     })),
@@ -45,12 +46,13 @@ export async function GET() {
     .slice(0, 50);
 
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Chronos</title>
     <link>${siteUrl}</link>
     <description>Latest articles and reviews from Chronos.</description>
     <language>en-US</language>
+    <atom:link href="${absoluteUrl("/rss.xml")}" rel="self" type="application/rss+xml" />
     ${items
       .map(
         (item) => `

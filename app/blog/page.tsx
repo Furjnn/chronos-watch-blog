@@ -1,35 +1,47 @@
 import { prisma } from "@/lib/prisma";
 import BlogIndexClient from "./BlogIndexClient";
 import type { Metadata } from "next";
+import { formatDateByLocale } from "@/lib/i18n/format";
+import { getDictionary, getLocale } from "@/lib/i18n";
+import { getLocaleAlternates } from "@/lib/i18n/metadata";
+import { absoluteUrl } from "@/lib/seo";
 
 export const revalidate = 60;
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-export const metadata: Metadata = {
-  title: "The Journal",
-  description: "In-depth reviews, stories, and insights from the world of horology",
-  alternates: { canonical: "/blog" },
-  openGraph: {
-    title: "The Journal | Chronos",
-    description: "In-depth reviews, stories, and insights from the world of horology",
-    url: `${siteUrl}/blog`,
-    type: "website",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const dictionary = await getDictionary(locale);
+  const alternates = getLocaleAlternates("/blog", locale);
+
+  return {
+    title: dictionary.meta.blogTitle,
+    description: dictionary.meta.blogDescription,
+    alternates,
+    openGraph: {
+      title: `${dictionary.meta.blogTitle} | Chronos`,
+      description: dictionary.meta.blogDescription,
+      url: absoluteUrl(alternates.canonical),
+      type: "website",
+    },
+  };
+}
 
 const fallbackImg = "https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=600&q=80";
 
-function formatDate(d: Date | null) {
-  if (!d) return "";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
 function slugify(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 export default async function BlogPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
+  const locale = await getLocale();
+  const dictionary = await getDictionary(locale);
   const { category } = await searchParams;
+
   const [rawPosts, rawCategories] = await Promise.all([
     prisma.post.findMany({
       where: { status: "PUBLISHED" },
@@ -39,22 +51,26 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
     prisma.category.findMany({ orderBy: { name: "asc" } }),
   ]);
 
-  const posts = rawPosts.map(p => ({
-    id: p.id,
-    cat: p.categories[0]?.name || "Article",
-    title: p.title,
-    excerpt: p.excerpt || "",
-    author: p.author?.name || "Chronos",
-    avatar: (p.author?.name || "C").split(" ").map(w => w[0]).join(""),
-    date: formatDate(p.publishedAt),
-    readTime: `${p.readingTime || 8} min`,
-    img: p.coverImage || fallbackImg,
-    slug: p.slug,
+  const posts = rawPosts.map((post) => ({
+    id: post.id,
+    cat: post.categories[0]?.name || dictionary.search.typeArticle,
+    title: post.title,
+    excerpt: post.excerpt || "",
+    author: post.author?.name || "Chronos",
+    avatar: (post.author?.name || "C")
+      .split(" ")
+      .map((word) => word[0])
+      .join(""),
+    date: formatDateByLocale(post.publishedAt, locale),
+    readTime: `${post.readingTime || 8} ${dictionary.common.min}`,
+    img: post.coverImage || fallbackImg,
+    slug: post.slug,
   }));
 
-  const categories = ["All", ...rawCategories.map(c => c.name)];
+  const allCategory = dictionary.blog.allCategory;
+  const categories = [allCategory, ...rawCategories.map((categoryItem) => categoryItem.name)];
   const normalizedQuery = category ? slugify(category) : "";
-  const initialCategory = categories.find((cat) => slugify(cat) === normalizedQuery) || "All";
+  const initialCategory = categories.find((item) => slugify(item) === normalizedQuery) || allCategory;
 
   return <BlogIndexClient key={initialCategory} posts={posts} categories={categories} initialCategory={initialCategory} />;
 }

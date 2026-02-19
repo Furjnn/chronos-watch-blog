@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { Role } from "@prisma/client";
 import { requireAuth, hashPassword } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logAuditEvent } from "@/lib/audit-log";
+import { getRequestContext } from "@/lib/request-context";
 
 const ROLE_OPTIONS = new Set<Role>(["ADMIN", "EDITOR", "AUTHOR"]);
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await requireAuth(["ADMIN"]);
+    const context = getRequestContext(req);
     const { id } = await params;
     const data = await req.json();
 
@@ -15,6 +18,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const email = String(data.email || "").trim().toLowerCase();
     const role = String(data.role || "EDITOR") as Role;
     const password = String(data.password || "");
+    const twoFactorEnabled = Boolean(data.twoFactorEnabled);
 
     if (!name || !email) {
       return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
@@ -32,9 +36,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         name,
         email,
         role,
+        twoFactorEnabled,
         ...(password ? { passwordHash: await hashPassword(password) } : {}),
       },
-      select: { id: true, name: true, email: true, role: true, createdAt: true, updatedAt: true },
+      select: { id: true, name: true, email: true, role: true, twoFactorEnabled: true, createdAt: true, updatedAt: true },
+    });
+    await logAuditEvent({
+      action: "admin_user.updated",
+      entityType: "user",
+      entityId: user.id,
+      summary: `Updated admin user: ${user.email}`,
+      actor: { userId: session.id },
+      details: { role: user.role, twoFactorEnabled },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
     });
     return NextResponse.json({ user });
   } catch (error) {
@@ -68,6 +83,13 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     }
 
     await prisma.user.delete({ where: { id } });
+    await logAuditEvent({
+      action: "admin_user.deleted",
+      entityType: "user",
+      entityId: id,
+      summary: `Deleted admin user ${id}`,
+      actor: { userId: session.id },
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Bad request";

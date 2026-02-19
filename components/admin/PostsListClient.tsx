@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 interface Post {
   id: string; title: string; slug: string; status: string; featured: boolean;
-  views: number; publishedAt: string | null; createdAt: string;
+  views: number; isScheduled: boolean; scheduledAt: string | null; publishedAt: string | null; createdAt: string;
   author: { name: string }; categories: { name: string }[];
 }
 
@@ -97,6 +97,7 @@ export default function PostsListClient({ posts }: { posts: Post[] }) {
               </td></tr>
             ) : filtered.map(post => {
               const st = statusStyles[post.status] || statusStyles.DRAFT;
+              const scheduled = post.isScheduled;
               return (
                 <tr key={post.id} className="group hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4">
@@ -116,13 +117,22 @@ export default function PostsListClient({ posts }: { posts: Post[] }) {
                   </td>
                   <td className="px-4 py-4 text-[13px] text-slate-500">{post.author.name}</td>
                   <td className="px-4 py-4">
-                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${st.bg} ${st.text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
-                      {post.status}
-                    </span>
+                    {scheduled ? (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        SCHEDULED
+                      </span>
+                    ) : (
+                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${st.bg} ${st.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                        {post.status}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-4 text-[13px] text-slate-500 tabular-nums">{post.views.toLocaleString()}</td>
-                  <td className="px-4 py-4 text-[13px] text-slate-400">{formatDate(post.createdAt)}</td>
+                  <td className="px-4 py-4 text-[13px] text-slate-400">
+                    {scheduled && post.scheduledAt ? `Sched: ${formatDate(post.scheduledAt)}` : formatDate(post.createdAt)}
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Link href={`/admin/posts/${post.id}/edit`} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#B8956A] no-underline transition-colors" title="Edit">
