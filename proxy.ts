@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 import { isLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/config";
 import { getLocaleFromPathname, getPreferredLocale, localizePathname, stripLocaleFromPathname } from "@/lib/i18n/routing";
 
@@ -11,6 +12,41 @@ const EXCLUDED_EXACT_PATHS = new Set([
 
 const EXCLUDED_PREFIXES = ["/_next", "/api", "/admin", "/studio", "/og"];
 const FILE_EXTENSION_REGEX = /\.[^/]+$/;
+const ADMIN_PATH_PREFIX = "/admin";
+const ADMIN_LOGIN_PATH = "/admin/login";
+
+function isAdminPath(pathname: string) {
+  return pathname === ADMIN_PATH_PREFIX || pathname.startsWith(`${ADMIN_PATH_PREFIX}/`);
+}
+
+function isAdminPublicPath(pathname: string) {
+  return pathname === ADMIN_LOGIN_PATH || pathname.startsWith(`${ADMIN_LOGIN_PATH}/`);
+}
+
+async function hasValidAdminToken(request: NextRequest) {
+  const token = request.cookies.get("admin-token")?.value;
+  if (!token) return false;
+
+  const secret = (process.env.AUTH_SECRET || "").trim();
+  if (!secret) return false;
+
+  try {
+    await jwtVerify(token, new TextEncoder().encode(secret));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function redirectToAdminLogin(request: NextRequest, nextPath: string) {
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.pathname = ADMIN_LOGIN_PATH;
+  redirectUrl.search = "";
+  if (nextPath && nextPath !== ADMIN_PATH_PREFIX) {
+    redirectUrl.searchParams.set("next", nextPath);
+  }
+  return NextResponse.redirect(redirectUrl);
+}
 
 function isExcludedPath(pathname: string) {
   if (EXCLUDED_EXACT_PATHS.has(pathname)) return true;
@@ -46,13 +82,37 @@ function withLocaleHeaders(request: NextRequest, locale: Locale, pathnameWithout
   return headers;
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const localeFromPath = getLocaleFromPathname(pathname);
+  const pathnameWithoutLocale = localeFromPath ? stripLocaleFromPathname(pathname) : pathname;
+
+  if (isAdminPath(pathnameWithoutLocale)) {
+    if (localeFromPath) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = pathnameWithoutLocale;
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    const authenticated = await hasValidAdminToken(request);
+    const publicAdminPath = isAdminPublicPath(pathnameWithoutLocale);
+
+    if (!authenticated && !publicAdminPath) {
+      const nextPath = `${pathnameWithoutLocale}${request.nextUrl.search || ""}`;
+      return redirectToAdminLogin(request, nextPath);
+    }
+
+    if (authenticated && publicAdminPath) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = ADMIN_PATH_PREFIX;
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    return NextResponse.next();
+  }
 
   if (localeFromPath) {
-    const pathnameWithoutLocale = stripLocaleFromPathname(pathname);
-
     if (isExcludedPath(pathnameWithoutLocale)) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = pathnameWithoutLocale;
