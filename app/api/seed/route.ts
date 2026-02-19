@@ -4,7 +4,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { writeClient } from "@/sanity/client";
 
 export async function GET(req: NextRequest) {
   try {
@@ -21,6 +20,8 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Invalid seed secret" }, { status: 401 });
       }
     }
+
+    const { writeClient } = await import("@/sanity/client");
 
     // ── Check if already seeded ──
     const existing = await writeClient.fetch(`count(*[_type == "post"])`);
