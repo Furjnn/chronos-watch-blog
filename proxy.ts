@@ -82,6 +82,12 @@ function withLocaleHeaders(request: NextRequest, locale: Locale, pathnameWithout
   return headers;
 }
 
+function withPathHeader(request: NextRequest, pathnameWithoutLocale: string) {
+  const headers = new Headers(request.headers);
+  headers.set("x-pathname", pathnameWithoutLocale);
+  return headers;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const localeFromPath = getLocaleFromPathname(pathname);
@@ -109,7 +115,9 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    return NextResponse.next();
+    return NextResponse.next({
+      request: { headers: withPathHeader(request, pathnameWithoutLocale) },
+    });
   }
 
   if (localeFromPath) {

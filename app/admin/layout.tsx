@@ -2,6 +2,8 @@ import { getSession } from "@/lib/auth";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   robots: {
@@ -17,8 +19,16 @@ export const metadata: Metadata = {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
+  const headerStore = await headers();
+  const pathname = headerStore.get("x-pathname") || "";
+  const isLoginRoute = pathname === "/admin/login" || pathname.startsWith("/admin/login/");
 
   if (!session) {
+    if (pathname && !isLoginRoute) {
+      const loginPath = pathname === "/admin" ? "/admin/login" : `/admin/login?next=${encodeURIComponent(pathname)}`;
+      redirect(loginPath);
+    }
+
     return (
       <div className="admin-layout">
         <style dangerouslySetInnerHTML={{ __html: `
