@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { put } from "@vercel/blob";
+import { getBlobReadWriteToken, isLikelyReadWriteBlobToken } from "@/lib/blob-storage";
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,20 +37,39 @@ export async function POST(req: NextRequest) {
       .slice(0, 50);
     const filename = `${timestamp}-${safeName}.${ext}`;
 
-    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+    const blobToken = getBlobReadWriteToken();
     if (blobToken) {
-      const blob = await put(`uploads/${filename}`, file, {
-        access: "public",
-        token: blobToken,
-        addRandomSuffix: false,
-      });
+      if (!isLikelyReadWriteBlobToken(blobToken)) {
+        return NextResponse.json(
+          {
+            error:
+              "BLOB_READ_WRITE_TOKEN format is invalid. Use a Vercel Blob Read/Write token (vercel_blob_rw_...).",
+          },
+          { status: 500 },
+        );
+      }
 
-      return NextResponse.json({
-        url: blob.url,
-        filename,
-        size: file.size,
-        type: file.type,
-      });
+      try {
+        const blob = await put(`uploads/${filename}`, file, {
+          access: "public",
+          token: blobToken,
+          addRandomSuffix: false,
+        });
+
+        return NextResponse.json({
+          url: blob.url,
+          filename,
+          size: file.size,
+          type: file.type,
+        });
+      } catch (blobError) {
+        const reason =
+          blobError instanceof Error ? blobError.message : "Unknown blob upload error";
+        return NextResponse.json(
+          { error: `Blob upload failed: ${reason}` },
+          { status: 500 },
+        );
+      }
     }
 
     // Vercel serverless filesystem is read-only; require Blob in production.

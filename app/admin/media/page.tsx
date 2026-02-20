@@ -3,6 +3,7 @@ import { readdir, stat } from "fs/promises";
 import path from "path";
 import { list } from "@vercel/blob";
 import type { ListBlobResult } from "@vercel/blob";
+import { getBlobReadWriteToken, isLikelyReadWriteBlobToken } from "@/lib/blob-storage";
 
 type MediaFile = {
   filename: string;
@@ -69,8 +70,8 @@ async function getLocalFiles(): Promise<MediaFile[]> {
 }
 
 async function getUploadedFiles() {
-  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
-  if (blobToken) {
+  const blobToken = getBlobReadWriteToken();
+  if (blobToken && isLikelyReadWriteBlobToken(blobToken)) {
     try {
       return await getBlobFiles(blobToken);
     } catch {
