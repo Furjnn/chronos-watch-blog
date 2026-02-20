@@ -10,6 +10,8 @@ interface Props {
   compact?: boolean;
 }
 
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
 export default function ImageUpload({ value, onChange, aspectRatio = "16/9", compact = false }: Props) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -29,8 +31,8 @@ export default function ImageUpload({ value, onChange, aspectRatio = "16/9", com
       setUploading(false);
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setError("File too large (max 10MB)");
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError("File too large (max 4MB)");
       setUploading(false);
       return;
     }
@@ -45,8 +47,20 @@ export default function ImageUpload({ value, onChange, aspectRatio = "16/9", com
       setProgress(80);
 
       if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Upload failed");
+        const contentType = res.headers.get("content-type") || "";
+        let message = `Upload failed (${res.status})`;
+
+        if (contentType.includes("application/json")) {
+          const data = await res.json();
+          message = data.error || message;
+        } else {
+          const raw = (await res.text()).trim();
+          if (raw) {
+            message = `${message}: ${raw.slice(0, 180)}`;
+          }
+        }
+
+        setError(message);
         setUploading(false);
         return;
       }
@@ -59,8 +73,9 @@ export default function ImageUpload({ value, onChange, aspectRatio = "16/9", com
         setUploading(false);
         setProgress(0);
       }, 500);
-    } catch {
-      setError("Upload failed");
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Network error";
+      setError(`Upload failed: ${reason}`);
       setUploading(false);
     }
   }, [onChange]);
@@ -167,7 +182,7 @@ export default function ImageUpload({ value, onChange, aspectRatio = "16/9", com
                 <p className="text-[13px] text-slate-600 font-medium mb-0.5">
                   {dragOver ? "Drop image here" : "Click or drag to upload"}
                 </p>
-                <p className="text-[11px] text-slate-400">JPG, PNG, WebP · Max 10MB</p>
+                <p className="text-[11px] text-slate-400">JPG, PNG, WebP · Max 4MB</p>
               </>
             )}
           </div>
@@ -196,3 +211,5 @@ export default function ImageUpload({ value, onChange, aspectRatio = "16/9", com
     </div>
   );
 }
+
+

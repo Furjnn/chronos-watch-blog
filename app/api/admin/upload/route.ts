@@ -5,6 +5,8 @@ import path from "path";
 import { put } from "@vercel/blob";
 import { getBlobReadWriteToken, isLikelyReadWriteBlobToken } from "@/lib/blob-storage";
 
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // Keep below common serverless body limits.
+
 export async function POST(req: NextRequest) {
   try {
     await requireAuth(["ADMIN", "EDITOR"]);
@@ -22,9 +24,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid file type. Allowed: JPG, PNG, WebP, GIF, SVG" }, { status: 400 });
     }
 
-    // Max 10MB
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: "File too large. Max 10MB" }, { status: 400 });
+    // Max 4MB
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: "File too large. Max 4MB" }, { status: 400 });
     }
 
     // Generate unique filename

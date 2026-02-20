@@ -5,6 +5,8 @@ import { MemberAuthError, requireMemberSession } from "@/lib/member-auth";
 import { put } from "@vercel/blob";
 import { getBlobReadWriteToken, isLikelyReadWriteBlobToken } from "@/lib/blob-storage";
 
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // Keep below common serverless body limits.
+
 export async function POST(req: NextRequest) {
   try {
     const session = await requireMemberSession();
@@ -20,8 +22,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid file type. Allowed: JPG, PNG, WebP, GIF, SVG" }, { status: 400 });
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      return NextResponse.json({ error: "File too large. Max 8MB" }, { status: 400 });
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: "File too large. Max 4MB" }, { status: 400 });
     }
 
     const ext = file.name.split(".").pop() || "jpg";
