@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { logAuditEvent } from "@/lib/audit-log";
 import { upsertPostSearchDocument, upsertReviewSearchDocument } from "@/lib/search-index";
 import { notifyNewsletterPostPublished, notifyNewsletterReviewPublished } from "@/lib/newsletter";
+import { notifyAdminUsers } from "@/lib/admin-notifications";
 
 type SchedulerSummary = {
   publishedPosts: number;
@@ -90,6 +91,16 @@ export async function runScheduledPublishing() {
         title: post.title,
         slug: post.slug,
       });
+      await notifyAdminUsers({
+        type: "SCHEDULED_POST_PUBLISHED",
+        title: "Scheduled post published",
+        message: `Scheduled post is now live: ${post.title}`,
+        href: `/admin/posts/${post.id}/edit`,
+        severity: "success",
+        postId: post.id,
+        dedupeByEntity: true,
+        emailSubject: `[Chronos Scheduler] Post published: ${post.title}`,
+      });
       await logAuditEvent({
         action: "post.scheduled_publish.executed",
         entityType: "post",
@@ -114,6 +125,16 @@ export async function runScheduledPublishing() {
         title: review.title,
         slug: review.slug,
       });
+      await notifyAdminUsers({
+        type: "SCHEDULED_REVIEW_PUBLISHED",
+        title: "Scheduled review published",
+        message: `Scheduled review is now live: ${review.title}`,
+        href: `/admin/reviews/${review.id}/edit`,
+        severity: "success",
+        reviewId: review.id,
+        dedupeByEntity: true,
+        emailSubject: `[Chronos Scheduler] Review published: ${review.title}`,
+      });
       await logAuditEvent({
         action: "review.scheduled_publish.executed",
         entityType: "review",
@@ -128,7 +149,37 @@ export async function runScheduledPublishing() {
       console.warn(
         "[scheduler] Skipped run because database schema is behind. Run `npx prisma db push && npx prisma generate` and restart dev server.",
       );
+      try {
+        await notifyAdminUsers({
+          type: "SYSTEM_SCHEMA_SYNC_REQUIRED",
+          title: "Database schema sync required",
+          message: "Scheduler skipped because database schema is behind Prisma schema. Run db push/migrate and regenerate client.",
+          href: "/admin/scheduler",
+          severity: "critical",
+          dedupeWindowMinutes: 180,
+          emailSubject: "[Chronos Scheduler] Database schema sync required",
+        });
+      } catch (notifyError) {
+        console.error("[scheduler] failed to notify admins for schema sync issue", notifyError);
+      }
       return { publishedPosts: 0, publishedReviews: 0 } satisfies SchedulerSummary;
+    }
+    try {
+      const errorMessage = error instanceof Error ? error.message : "Unknown scheduler error";
+      await notifyAdminUsers({
+        type: "SYSTEM_SCHEDULER_ERROR",
+        title: "Scheduler run failed",
+        message: `Scheduler failed with error: ${errorMessage}`,
+        href: "/admin/scheduler",
+        severity: "critical",
+        dedupeWindowMinutes: 20,
+        emailSubject: "[Chronos Scheduler] Run failed",
+        payload: {
+          errorMessage,
+        },
+      });
+    } catch (notifyError) {
+      console.error("[scheduler] failed to notify admins for scheduler error", notifyError);
     }
     throw error;
   }

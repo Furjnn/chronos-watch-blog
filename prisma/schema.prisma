@@ -106,6 +106,15 @@ model User {
   passwordHash        String
   role                Role            @default(EDITOR)
   avatar              String?
+  profileCoverImage   String?
+  profileTitle        String?
+  profileBio          String?         @db.Text
+  profileDetails      String?         @db.Text
+  profilePhone        String?
+  profileLocation     String?
+  profileTimezone     String?
+  profileWebsite      String?
+  profileSocialLinks  Json?
   twoFactorEnabled    Boolean         @default(false)
   twoFactorMethod     TwoFactorMethod @default(EMAIL)
   twoFactorSecret     String?

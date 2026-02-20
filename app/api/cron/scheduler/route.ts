@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { runScheduledPublishing } from "@/lib/scheduler";
 import { getRequestContext } from "@/lib/request-context";
 import { logAuditEvent } from "@/lib/audit-log";
+import { notifyAdminUsers } from "@/lib/admin-notifications";
 
 function isAuthorizedCronRequest(req: NextRequest) {
   const secret = process.env.CRON_SECRET || process.env.SCHEDULER_CRON_SECRET;
@@ -66,6 +67,22 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unable to run scheduler";
+    try {
+      await notifyAdminUsers({
+        type: "SYSTEM_SCHEDULER_CRON_FAILED",
+        title: "Cron scheduler failed",
+        message: `Cron scheduler endpoint failed: ${message}`,
+        href: "/admin/scheduler",
+        severity: "critical",
+        dedupeWindowMinutes: 20,
+        emailSubject: "[Chronos Scheduler] Cron run failed",
+        payload: {
+          message,
+        },
+      });
+    } catch (notifyError) {
+      console.error("[cron:scheduler] failed to notify admins", notifyError);
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
