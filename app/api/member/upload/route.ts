@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { MemberAuthError, requireMemberSession } from "@/lib/member-auth";
+import { put } from "@vercel/blob";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,9 +23,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File too large. Max 8MB" }, { status: 400 });
     }
 
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-
     const ext = file.name.split(".").pop() || "jpg";
     const timestamp = Date.now();
     const safeName = file.name
@@ -34,6 +32,31 @@ export async function POST(req: NextRequest) {
       .slice(0, 40);
     const filename = `${timestamp}-${session.id.slice(0, 6)}-${safeName}.${ext}`;
 
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+    if (blobToken) {
+      const blob = await put(`uploads/${filename}`, file, {
+        access: "public",
+        token: blobToken,
+        addRandomSuffix: false,
+      });
+
+      return NextResponse.json({
+        url: blob.url,
+        filename,
+        size: file.size,
+        type: file.type,
+      });
+    }
+
+    if (process.env.VERCEL === "1") {
+      return NextResponse.json(
+        { error: "Upload storage is not configured. Set BLOB_READ_WRITE_TOKEN for production uploads." },
+        { status: 500 },
+      );
+    }
+
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    await mkdir(uploadDir, { recursive: true });
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const filepath = path.join(uploadDir, filename);

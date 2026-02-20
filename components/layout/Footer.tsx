@@ -3,8 +3,18 @@
 import Link from "next/link";
 import { useI18n } from "@/components/i18n/I18nProvider";
 
-export function Footer() {
+type FooterProps = {
+  siteName?: string | null;
+  logo?: string | null;
+};
+
+export function Footer({ siteName, logo }: FooterProps) {
   const { t, localizePath } = useI18n();
+  const resolvedSiteName = siteName?.trim() || "Chronos";
+  const logoUrl = logo?.trim() || "";
+  const hasLogo = Boolean(logoUrl);
+  const translatedRights = t("footer.rights", "(c) 2026 Chronos. All rights reserved.");
+  const rightsText = translatedRights.replace(/chronos/gi, resolvedSiteName);
 
   const footerCols = [
     {
@@ -32,9 +42,17 @@ export function Footer() {
       <div className="max-w-[1200px] mx-auto px-6 md:px-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-12 pb-12">
           <div>
-            <div className="text-xl font-semibold text-white tracking-[2px] mb-3" style={{ fontFamily: "var(--font-display)" }}>
-              CHRONOS
-            </div>
+            {hasLogo ? (
+              <img
+                src={logoUrl}
+                alt={resolvedSiteName}
+                className="h-9 w-auto max-w-[200px] object-contain mb-3"
+              />
+            ) : (
+              <div className="text-xl font-semibold text-white tracking-[2px] mb-3" style={{ fontFamily: "var(--font-display)" }}>
+                {resolvedSiteName}
+              </div>
+            )}
             <p className="text-[13px] text-white/35 leading-relaxed max-w-[260px]">
               {t("footer.brandDescription", "Your trusted source for luxury watch reviews, news, and insights.")}
             </p>
@@ -92,7 +110,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-white/[0.06] py-5 flex flex-col md:flex-row justify-between items-center gap-3">
-          <span className="text-[12px] text-white/20">{t("footer.rights", "(c) 2026 Chronos. All rights reserved.")}</span>
+          <span className="text-[12px] text-white/20">{rightsText}</span>
           <div className="flex gap-6">
             {[
               t("footer.privacy", "Privacy Policy"),

@@ -28,18 +28,31 @@ const dmSans = DM_Sans({
   display: "swap",
 });
 
+function resolveAssetUrl(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return absoluteUrl(trimmed.startsWith("/") ? trimmed : `/${trimmed}`);
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const dictionary = await getDictionary(locale);
+  const settings = await prisma.siteSettings.findUnique({
+    where: { id: "main" },
+    select: { siteName: true },
+  });
+  const siteName = settings?.siteName?.trim() || "Chronos";
   const title = dictionary.meta.rootTitle;
   const description = dictionary.meta.rootDescription;
   const alternates = getLocaleAlternates("/", locale);
+  const ogTitle = encodeURIComponent(siteName);
 
   return {
     metadataBase: new URL(siteUrl),
     title: {
       default: title,
-      template: `%s | Chronos`,
+      template: `%s | ${siteName}`,
     },
     description,
     alternates: {
@@ -64,15 +77,15 @@ export async function generateMetadata(): Promise<Metadata> {
       url: absoluteUrl(alternates.canonical),
       title,
       description,
-      siteName: "Chronos",
-      images: [{ url: absoluteUrl("/og?title=Chronos") }],
+      siteName,
+      images: [{ url: absoluteUrl(`/og?title=${ogTitle}`) }],
       locale: locale === "tr" ? "tr_TR" : "en_US",
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [absoluteUrl("/og?title=Chronos")],
+      images: [absoluteUrl(`/og?title=${ogTitle}`)],
     },
     verification: {
       google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
@@ -86,13 +99,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dictionary = await getDictionary(locale);
   const settings = await prisma.siteSettings.findUnique({
     where: { id: "main" },
-    select: { socials: true },
+    select: { socials: true, siteName: true, logo: true },
   });
+  const siteName = settings?.siteName?.trim() || "Chronos";
+  const logo = settings?.logo?.trim() || "";
+  const organizationLogo = resolveAssetUrl(logo) || absoluteUrl("/favicon.ico");
   const navigation = extractHeaderNavigationFromSocials(settings?.socials);
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "Chronos",
+    name: siteName,
     url: siteUrl,
     description: dictionary.meta.rootDescription,
     inLanguage: locale === "tr" ? "tr-TR" : "en-US",
@@ -106,9 +122,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Chronos",
+    name: siteName,
     url: siteUrl,
-    logo: absoluteUrl("/favicon.ico"),
+    logo: organizationLogo,
     sameAs: [],
   };
 
@@ -127,9 +143,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <AdSenseScript />
           <PageMetrics />
           <ScrollProgress />
-          <Header navigation={navigation} />
+          <Header navigation={navigation} siteName={siteName} logo={logo} />
           <main>{children}</main>
-          <Footer />
+          <Footer siteName={siteName} logo={logo} />
         </I18nProvider>
       </body>
     </html>

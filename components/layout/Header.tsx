@@ -18,10 +18,19 @@ type MemberUser = {
   email: string;
 };
 
-export function Header({ navigation }: { navigation?: HeaderNavigationItem[] }) {
+type HeaderProps = {
+  navigation?: HeaderNavigationItem[];
+  siteName?: string | null;
+  logo?: string | null;
+};
+
+export function Header({ navigation, siteName, logo }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { locale, t, localizePath } = useI18n();
+  const resolvedSiteName = siteName?.trim() || "Chronos";
+  const logoUrl = logo?.trim() || "";
+  const hasLogo = Boolean(logoUrl);
 
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -86,10 +95,18 @@ export function Header({ navigation }: { navigation?: HeaderNavigationItem[] }) 
       <div className="max-w-[1200px] mx-auto px-6 md:px-10 flex items-center justify-between h-14">
         <Link
           href={localizePath("/")}
-          className={`font-[var(--font-display)] text-[22px] font-semibold tracking-[2px] no-underline transition-colors ${logoColor}`}
-          style={{ fontFamily: "var(--font-display)" }}
+          className={`no-underline transition-colors ${hasLogo ? "flex items-center h-9" : `font-[var(--font-display)] text-[22px] font-semibold tracking-[2px] ${logoColor}`}`}
+          style={hasLogo ? undefined : { fontFamily: "var(--font-display)" }}
         >
-          CHRONOS
+          {hasLogo ? (
+            <img
+              src={logoUrl}
+              alt={resolvedSiteName}
+              className="h-8 w-auto max-w-[180px] object-contain"
+            />
+          ) : (
+            resolvedSiteName
+          )}
         </Link>
 
         <nav className="hidden md:flex gap-8">
