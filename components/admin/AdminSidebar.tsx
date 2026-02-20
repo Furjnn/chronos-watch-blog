@@ -42,6 +42,7 @@ const NAV_SECTIONS = [
       { name: "Members", href: "/admin/members", icon: "M17 20h5v-1a4 4 0 00-5.3-3.8M9 20H4v-1a4 4 0 015.3-3.8M16 6a3 3 0 11-6 0 3 3 0 016 0zM8 6a3 3 0 11-6 0 3 3 0 016 0zM16 14a4 4 0 00-8 0v1h8v-1z" },
       { name: "Users", href: "/admin/users", icon: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8zm11 14v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" },
       { name: "My Profile", href: "/admin/profile", icon: "M5.121 17.804A9 9 0 1118.88 6.196M15 11a3 3 0 11-6 0 3 3 0 016 0m-6.5 8.5a6.5 6.5 0 0113 0" },
+      { name: "Chat", href: "/admin/chat", icon: "M8 10h8M8 14h5m8-8a2 2 0 012 2v10l-4-3H5a2 2 0 01-2-2V6a2 2 0 012-2h14z" },
       { name: "Notifications", href: "/admin/notifications", icon: "M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" },
       { name: "Security", href: "/admin/security", icon: "M12 2l7 4v5c0 5-3.5 9.74-7 11-3.5-1.26-7-6-7-11V6l7-4z" },
       { name: "Audit Log", href: "/admin/audit", icon: "M9 17v-2m3 2v-4m3 4V7m5 11H4a2 2 0 01-2-2V4a2 2 0 012-2h5.586a1 1 0 01.707.293l1.414 1.414A1 1 0 0012.414 4H20a2 2 0 012 2v10a2 2 0 01-2 2z" },
@@ -64,6 +65,7 @@ export default function AdminSidebar({ userRole }: { userRole: string }) {
     ...section,
     items: section.items.filter((item) => {
       if ((item.name === "Users" || item.name === "Members" || item.name === "Security") && userRole !== "ADMIN") return false;
+      if (item.name === "Chat" && userRole === "AUTHOR") return false;
       return true;
     }),
   })).filter((section) => section.items.length > 0);

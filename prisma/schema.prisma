@@ -134,6 +134,7 @@ model User {
   receivedNotifications    NotificationLog[]     @relation("NotificationRecipientUser")
   securityEvents           SecurityEvent[]       @relation("SecurityEventUser")
   loginChallenges          AdminLoginChallenge[]
+  chatMessages             AdminChatMessage[]
 }
 
 model Member {
@@ -338,6 +339,17 @@ model SiteSettings {
   footerText     String?
   analyticsId    String?
   updatedAt      DateTime @updatedAt
+}
+
+model AdminChatMessage {
+  id           String   @id @default(cuid())
+  content      String   @db.Text
+  sender       User     @relation(fields: [senderUserId], references: [id], onDelete: Cascade)
+  senderUserId String
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([senderUserId, createdAt])
 }
 
 model PostRevision {
